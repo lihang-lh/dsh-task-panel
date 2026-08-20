@@ -131,3 +131,34 @@ shell.overlay 抽屉面板  ◀── JSON 返回 ───   tasks-list / tasks
 
 - 改 Host（`index.js`）或前端（`client.js`）后重启 `dsh web` 生效；`tasks.json` 是运行时数据（gitignored，插件会自动创建）。
 - Host 提供 HTTP API：`POST /dsh-task-panel/api/tasks-list | tasks-scan | tasks-create | tasks-action`。
+
+---
+
+## 8. 常见问题（QA）
+
+### Q1：「检索失败: session search is disabled: this deployment configures the session-query index with openAt "never"」
+
+**原因**：DSH 的全文会话搜索默认是**关闭的（opt-in）**。`dsh-base` / `dsh-web-app` 两个 bundle 层把 `session-query-sqlite` 配成 `openAt: never`（`path` 为 `:memory:`），此时 `ctx.sessionQuery` 仍挂载，但 `searchSessions` / `searchEvents` 会直接抛 `SESSION_QUERY_SEARCH_DISABLED`，且 node:sqlite 不会被导入。任务面板的「自动蒸馏 / 扫描关联会话」调用 `sessionQuery.searchSessions`，因此报错（见 `index.js` 中 `[task-panel] 检索失败:`）。
+
+**修复**：在 profile 的 patch 层（`~/.dsh/profiles/web/cordis.patch.yml`，在所有 bundle 层之后应用）覆盖该行 —— patch 会**整体替换** config，所以要连同 `path` 一起重申：
+
+```yaml
+- id: session-query-sqlite
+  config:
+    path: /Users/lihang/.dsh/session-query/index.sqlite
+    openAt: first-search
+```
+
+- `openAt` 取值：`startup`（服务激活时打开）/ `first-search`（推荐，推迟到首次搜索，Node 22 启动输出保持干净）/ `never`（关闭，默认）。
+- `path` 建议用持久化路径；默认 `:memory:` 首次搜索时会从 JSONL 会话日志重建索引，但每次进程重启后都要重建。
+- 改完**重启 `dsh web`** 生效，再点「🔍 扫描关联会话」或发布任务即可。
+
+### Q2：面板里没有「📋 任务面板」按钮
+
+**原因**：插件未安装或未在 profile 中启用。
+
+**排查**：
+
+1. 确认 `~/.dsh/profiles/web/package.json` 的 `dependencies` 含 `"dsh-task-panel": "link:/Users/lihang/gitlab1/dsh-task-panel"`，且 `dsh.profile.bundles` 末尾含 `"dsh-task-panel"`；
+2. 在 `~/.dsh/profiles/web` 执行 `pnpm install`；
+3. 重启 `dsh web` 后刷新页面（侧边栏底部、设置上方应出现带角标的按钮）。
