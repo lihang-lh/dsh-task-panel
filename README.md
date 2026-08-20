@@ -90,8 +90,8 @@
 ```
 浏览器 (Client)                          DSH 进程 (Host)
 ─────────────────                       ─────────────────────────────
-sidebar.footer.action 按钮 ──host.call──▶ harness.handle RPC:
-shell.overlay 抽屉面板  ◀── JSON 返回 ───   tasks.list / create / scan / action
+sidebar.footer.action 按钮 ──fetch/JSON─▶ webServer 路由 /dsh-task-panel/api/*
+shell.overlay 抽屉面板  ◀── JSON 返回 ───   tasks-list / tasks-scan / tasks-create / tasks-action
                                           │
                                           ├─ sessionQuery.searchSessions  蒸馏历史会话
                                           ├─ subagents.start('spawn')     各阶段子代理
@@ -115,8 +115,19 @@ shell.overlay 抽屉面板  ◀── JSON 返回 ───   tasks.list / creat
 
 ---
 
-## 7. 快速开始（开发）
+## 7. 安装与开发
 
-1. 本目录即插件工程：`src/host.js` + `src/client.js` 为源码，`tasks.json` 为数据。
-2. 在 DSH 中以动态 Cordis 插件加载（`cordis_define` → `cordis_run`）。
-3. 刷新 Web GUI：左侧底部出现「任务」按钮 → 发布你的第一个任务。
+### 安装（标准 DSH 插件包）
+
+本目录即标准 DSH 插件包：`index.js`（Host 入口）、`client.js`（浏览器 bundle，`__ModuleLoader__` 协议）、`cordis.patch.yml`（composition 行）、`package.json`（`dsh.bundle` + `dsh.client` 声明）。
+
+1. 在 web profile 中 link 安装：
+   - 编辑 `~/.dsh/profiles/web/package.json`：`dependencies` 增加 `"dsh-task-panel": "link:/Users/lihang/gitlab1/dsh-task-panel"`，并在 `dsh.profile.bundles` 末尾追加 `"dsh-task-panel"`；
+   - 在 `~/.dsh/profiles/web` 执行 `pnpm install`；
+   - 重启 `dsh web`。
+2. 刷新页面：侧边栏底部出现「📋 任务面板」按钮 → 发布你的第一个任务。
+
+### 开发
+
+- 改 Host（`index.js`）或前端（`client.js`）后重启 `dsh web` 生效；`tasks.json` 是运行时数据（gitignored，插件会自动创建）。
+- Host 提供 HTTP API：`POST /dsh-task-panel/api/tasks-list | tasks-scan | tasks-create | tasks-action`。
