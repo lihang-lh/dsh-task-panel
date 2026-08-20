@@ -1,0 +1,7 @@
+# 运行时数据：任务面板的任务库（插件首次启动会自动创建）
+tasks.json
+
+# 通用
+*.log
+.DS_Store
+node_modules/
