@@ -122,7 +122,7 @@ shell.overlay 抽屉面板  ◀── JSON 返回 ───   tasks-list / tasks
 本目录即标准 DSH 插件包：`index.js`（Host 入口）、`client.js`（浏览器 bundle，`__ModuleLoader__` 协议）、`cordis.patch.yml`（composition 行）、`package.json`（`dsh.bundle` + `dsh.client` 声明）。
 
 1. 在 web profile 中 link 安装：
-   - 编辑 `~/.dsh/profiles/web/package.json`：`dependencies` 增加 `"dsh-task-panel": "link:/Users/lihang/gitlab1/dsh-task-panel"`，并在 `dsh.profile.bundles` 末尾追加 `"dsh-task-panel"`；
+   - 编辑 `~/.dsh/profiles/web/package.json`：`dependencies` 增加 `"dsh-task-panel": "link:<你的 dsh-task-panel 目录>"`，并在 `dsh.profile.bundles` 末尾追加 `"dsh-task-panel"`；
    - 在 `~/.dsh/profiles/web` 执行 `pnpm install`；
    - 重启 `dsh web`。
 2. 刷新页面：侧边栏底部出现「📋 任务面板」按钮 → 发布你的第一个任务。
@@ -145,7 +145,7 @@ shell.overlay 抽屉面板  ◀── JSON 返回 ───   tasks-list / tasks
 ```yaml
 - id: session-query-sqlite
   config:
-    path: /Users/lihang/.dsh/session-query/index.sqlite
+    path: ~/.dsh/session-query/index.sqlite
     openAt: first-search
 ```
 
@@ -159,6 +159,6 @@ shell.overlay 抽屉面板  ◀── JSON 返回 ───   tasks-list / tasks
 
 **排查**：
 
-1. 确认 `~/.dsh/profiles/web/package.json` 的 `dependencies` 含 `"dsh-task-panel": "link:/Users/lihang/gitlab1/dsh-task-panel"`，且 `dsh.profile.bundles` 末尾含 `"dsh-task-panel"`；
+1. 确认 `~/.dsh/profiles/web/package.json` 的 `dependencies` 含 `"dsh-task-panel": "link:<你的 dsh-task-panel 目录>"`，且 `dsh.profile.bundles` 末尾含 `"dsh-task-panel"`；
 2. 在 `~/.dsh/profiles/web` 执行 `pnpm install`；
 3. 重启 `dsh web` 后刷新页面（侧边栏底部、设置上方应出现带角标的按钮）。
