@@ -434,6 +434,16 @@ window.__ModuleLoader__.load({
         return [];
       })();
       var badge = (st.counts.todo || 0) + (st.counts.confirm || 0) + (st.counts.review || 0);
+      // 面板默认收起：open=false 时不渲染遮罩/抽屉（✕ 按钮与背景遮罩的 closePanel 因此真正生效）。
+      // Esc 监听：面板打开时按下 Escape 即收起；清理函数避免重复监听。置于条件 return 之前遵守 hooks 规则。
+      React.useEffect(function () {
+        function onKeyDown(e) {
+          if (e.key === "Escape" && st.open) closePanel();
+        }
+        window.addEventListener("keydown", onKeyDown);
+        return function () { window.removeEventListener("keydown", onKeyDown); };
+      }, []);
+      if (!st.open) return null;
       return React.createElement("div", { className: "tp-wrap" }, [
         React.createElement("div", { className: "tp-backdrop", onClick: closePanel }),
         React.createElement("div", { className: "tp-drawer", style: { width: st.width + "px" } }, [
