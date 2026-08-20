@@ -1,0 +1,5 @@
+# dsh bundle patch: inserts this plugin into a profile's layer stack.
+# 部署级默认配置；任务数据保存在插件目录下的 tasks.json（gitignored）。
+- insert:
+    - id: dsh-task-panel
+      name: 'dsh-task-panel'

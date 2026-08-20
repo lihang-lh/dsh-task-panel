@@ -1,0 +1,27 @@
+{
+  "name": "dsh-task-panel",
+  "version": "0.1.0",
+  "description": "老板任务面板：发布任务、蒸馏历史会话、阶段化子代理执行与自动读取、面板验收。",
+  "type": "module",
+  "main": "index.js",
+  "license": "MIT",
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  }
+}
