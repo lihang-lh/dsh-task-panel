@@ -21,10 +21,11 @@ export async function apply(ctx) {
   // ---------- 常量 ----------
   const PROJECT_DIR = '/Users/lihang/gitlab1/dsh-task-panel'
   const FILE = 'tasks.json'
-  const STATUS = { TODO: 'todo', CONFIRM: 'confirm', DEVELOP: 'develop', REVIEW: 'review', DONE: 'done' }
-  const STATUS_LABEL = { todo: '待领取', confirm: '待确认', develop: '开发中', review: '复核中', done: '已完成' }
-  const STATUS_COLOR = { todo: '#94a3b8', confirm: '#f59e0b', develop: '#3b82f6', review: '#8b5cf6', done: '#22c55e' }
-  const STAGE_LABEL = { claim: '规划', develop: '开发', review: '复核' }
+  const STATUS = { TODO: 'todo', CLARIFY: 'clarify', CONFIRM: 'confirm', DEVELOP: 'develop', REVIEW: 'review', DONE: 'done' }
+  const STATUS_LABEL = { todo: '待领取', clarify: '待澄清', confirm: '待确认', develop: '开发中', review: '复核中', done: '已完成' }
+  const STATUS_COLOR = { todo: '#94a3b8', clarify: '#ec4899', confirm: '#f59e0b', develop: '#3b82f6', review: '#8b5cf6', done: '#22c55e' }
+  const STAGE_LABEL = { claim: '规划', refine: '澄清定稿', develop: '开发', review: '复核' }
+  const STATUS_ORDER = [STATUS.TODO, STATUS.CLARIFY, STATUS.CONFIRM, STATUS.DEVELOP, STATUS.REVIEW, STATUS.DONE]
   const MAX_CONCURRENT_DEVELOP = 1
 
   // fs.writeText 需要显式沙箱策略：默认按 workspace-write 裁定（workspaceRoot=进程 cwd），
@@ -38,6 +39,18 @@ export async function apply(ctx) {
         plan: { type: 'string' },
         steps: { type: 'array', items: { type: 'string' } },
         risks: { type: 'array', items: { type: 'string' } },
+        questions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              q: { type: 'string' },
+              why: { type: 'string' },
+            },
+            required: ['q'],
+            additionalProperties: true,
+          },
+        },
       },
       required: ['plan'],
       additionalProperties: true,
@@ -142,6 +155,11 @@ export async function apply(ctx) {
             t.flags = t.flags && typeof t.flags === 'object' ? t.flags : {}
             t.flags.running = false // 执行态不跨进程，重启后复位
             t.steps = Array.isArray(t.steps) ? t.steps : []
+            t.risks = Array.isArray(t.risks) ? t.risks : []
+            t.questions = Array.isArray(t.questions) ? t.questions : []
+            t.planDraft = typeof t.planDraft === 'string' ? t.planDraft : undefined
+            t.specPath = typeof t.specPath === 'string' ? t.specPath : ''
+            t.specInRepo = !!t.specInRepo
           }
           console.log('[task-panel] 已加载任务库:', c.dir, state.tasks.length, '个任务')
           break
@@ -224,8 +242,8 @@ export async function apply(ctx) {
     return out
   }
 
-  // ---------- 阶段 prompt（每个阶段一套） ----------
-  function buildPrompt(stage, task) {
+  // ---------- 阶段 prompt（每个阶段一套；opts.refine = 澄清定稿轮） ----------
+  function buildPrompt(stage, task, opts) {
     const related = (task.relatedSessions || [])
       .map((r) => '- ' + (r.title || r.id) + '（会话 ' + r.id + (r.cwd ? '，位于 ' + r.cwd : '') + '）：' + (r.reason || ''))
       .join('\n')
@@ -242,34 +260,113 @@ export async function apply(ctx) {
       + '并用 pwd 与 git rev-parse --show-toplevel 验证所在仓库；严禁把改动写到错误的仓库。'
 
     if (stage === 'claim') {
-      return base
+      let s = base
         + '\n\n## 关联的历史会话（仅供了解背景，不得修改它们）\n' + (related || '（无）')
-        + '\n\n你的角色：任务规划代理。'
-        + '\n请梳理该任务需要做什么，制定一份可执行的实施计划：步骤、涉及的文件/模块、风险与验证方式。'
+      if (opts && opts.refine) {
+        const qa = (task.questions || [])
+          .map((x) => '- Q' + x.id.slice(1) + '：' + x.q + (x.why ? '（' + x.why + '）' : '')
+            + '\n  老板回答：' + (x.answer || '（未回答，按你的最佳判断处理）'))
+          .join('\n')
+        s += '\n\n## 老板的澄清回答（上一轮规划提出的问题，请据此收敛方案）\n' + qa
+        s += '\n\n你的角色：任务规划代理（澄清定稿轮）。'
+        s += '\n请结合老板的回答输出**最终**实施计划（questions 输出空数组），不要再提出新问题。'
+      } else {
+        s += '\n\n你的角色：任务规划代理（OpenSpec 规划模式）。'
+      }
+      s += '\n请先梳理该任务需要做什么，再制定一份**完整可执行**的实施计划：'
+        + '\n- steps 必须像 OpenSpec 的 tasks.md 一样**编号列出**，每一步写清：做什么 / 涉及哪些文件或模块 / 如何验收这一步；'
+        + '\n- plan 用一段话概括目标与方案；'
+        + '\n- risks 列出主要风险与假设。'
         + '\n【不要开始实施】。'
-        + '\n以 JSON 输出：plan（一段话的实施计划）、steps（步骤数组）、risks（风险数组）。'
+      if (!(opts && opts.refine)) {
+        s += '\n需求澄清（必要）：若存在以下任一不明确点，**必须**在 questions 中向老板提问（每问一句话可答，why 说明为什么需要），不要自行假设：'
+          + '\n  1) 验收标准缺失或含糊，无法判断「做完」；2) 目标仓库/改动范围不明；3) 与现有实现或历史会话的关系不明；'
+          + '\n  4) 技术方案有明显分叉需要老板拍板；5) 需求范围过大需要确认优先级或拆解。'
+          + '\n  需求足够清晰时 questions 输出空数组。'
+      }
+      s += '\n以 JSON 输出：plan（一段话的实施计划）、steps（步骤数组）、risks（风险数组）、questions（数组，每项 {q, why}）。'
+      return s
     }
     if (stage === 'develop') {
       return base
         + '\n\n## 老板已确认的实施计划\n' + (task.plan || '（无，请自行规划后实施）')
+        + (task.specPath ? '\n\n## OpenSpec 任务清单（按编号任务逐步实施；每完成一项，把 tasks.md 中该项的 `[ ]` 改为 `[x]`）\n' + task.specPath : '')
         + '\n\n你的角色：开发执行代理。'
-        + '\n请严格按照计划实施本任务，完成代码/文档/配置改动并自测。'
+        + '\n请严格按照计划实施本任务，完成代码/文档/配置改动并自测：能跑的命令要实际跑并记录结果（退出码/输出），改 UI 要给出可验证的证据。'
         + '\n以 JSON 输出：done（boolean 是否完成）、summary（完成情况摘要）、changedFiles（改动文件数组）、blocker（未完成时的阻塞原因，否则空字符串）。'
     }
     if (stage === 'review') {
       return base
         + '\n\n## 实现摘要\n' + (task.summary || '（见执行子会话）')
+        + (task.specPath ? '\n\n## OpenSpec 任务清单（请逐项核对实现是否真正完成：对照 tasks.md 勾选状态与实际代码/产物）\n' + task.specPath : '')
         + '\n\n你的角色：质量复核代理（老板验收前的自动检查）。'
-        + '\n请对照验收标准复核实现：需求是否满足、代码质量、遗留问题与明显缺陷。'
+        + '\n请对照验收标准与任务清单复核实现：需求是否满足、每项任务是否完成、代码质量、遗留问题与明显缺陷。'
         + '\n以 JSON 输出：passed（boolean 是否通过）、issues（问题数组）、verdict（复核结论）。'
     }
     return base
   }
 
+  // ---------- OpenSpec 产物（规划定稿时写入目标仓库 specs/proposals/<任务id>/） ----------
+  function buildProposalMd(task) {
+    const risks = (task.risks || []).map((r) => '- ' + r).join('\n') || '- （规划未列出风险）'
+    const steps = (task.steps || []).length > 0
+      ? '- 见 [tasks.md](./tasks.md)（' + task.steps.length + ' 个编号任务）'
+      : '- （规划未产出步骤）'
+    const qa = (task.questions || [])
+      .filter((x) => x.answer)
+      .map((x) => '- Q' + x.id.slice(1) + '：' + x.q + ' → ' + x.answer)
+      .join('\n')
+    return '# 提案：' + task.title
+      + '\n\n- 任务 ID：`' + task.id + '`'
+      + '\n- 状态：' + (task.status === STATUS.DONE ? '已完成' : task.status === STATUS.DEVELOP ? '实施中' : '已规划') + '（由任务面板维护）'
+      + '\n- 创建时间：' + (task.createdAt || '')
+      + '\n- 来源会话：`' + (task.sourceSessionId || '') + '`'
+      + '\n- 目标仓库：`' + (task.repoPath || '（未指定）') + '`'
+      + '\n\n## 背景与动机\n' + (task.description || '（无额外描述，按任务标题推断）')
+      + '\n\n## 目标与方案\n' + (task.plan || '（规划未产出）')
+      + '\n\n## 实施步骤\n' + steps
+      + '\n\n## 风险\n' + risks
+      + '\n\n## 验收方式\n' + (task.acceptance || (qa ? '（任务未单独填写验收标准，以下方澄清问答为准）' : '（任务未明确验收标准，复核阶段对照计划与描述检查）'))
+      + (qa ? '\n\n## 澄清问答（老板确认）\n' + qa : '')
+  }
+
+  function buildTasksMd(task) {
+    const lines = (task.steps || []).map((s, i) => '- [ ] ' + (i + 1) + '. ' + s)
+    return '# 任务清单：' + task.title
+      + '\n\n> 由任务面板规划阶段生成（OpenSpec 风格）。开发阶段按编号逐步实施，每完成一项将 `[ ]` 改为 `[x]`，复核阶段逐项核对。\n'
+      + (lines.length > 0 ? '\n' + lines.join('\n') + '\n' : '\n- [ ] 1. （规划未产出步骤，见任务面板）\n')
+  }
+
+  // 写入 <repo>/specs/proposals/<taskId>/proposal.md + tasks.md；优先目标仓库，失败回退面板目录
+  async function writeOpenSpec(task) {
+    const attempts = []
+    if (task.repoPath && task.repoPath !== PROJECT_DIR) attempts.push({ dir: task.repoPath, inRepo: true })
+    attempts.push({ dir: PROJECT_DIR, inRepo: false })
+    let lastErr = null
+    for (const c of attempts) {
+      try {
+        const dir = 'specs/proposals/' + task.id
+        const proposalTarget = await resolveTarget(c.dir, dir + '/proposal.md')
+        const tasksTarget = await resolveTarget(c.dir, dir + '/tasks.md')
+        if (proposalTarget === null || tasksTarget === null) throw new Error('resolve failed')
+        const policy = { mode: 'workspace-write', workspaceRoot: c.dir }
+        await fs.writeText(proposalTarget, buildProposalMd(task), undefined, undefined, policy)
+        await fs.writeText(tasksTarget, buildTasksMd(task), undefined, undefined, policy)
+        task.specPath = String(proposalTarget.targetKey || (c.dir + '/' + dir + '/proposal.md'))
+        task.specInRepo = c.inRepo
+        return true
+      } catch (err) {
+        lastErr = err
+      }
+    }
+    note(task, 'OpenSpec 产物写入失败：' + (lastErr && lastErr.message || String(lastErr)) + '（计划仍保留在任务面板）')
+    return false
+  }
+
   // ---------- 阶段执行器（自动读取器核心） ----------
   const stageLabel = (stage) => STAGE_LABEL[stage] || STATUS_LABEL[stage] || stage
 
-  async function runStage(task, stage) {
+  async function runStage(task, stage, opts) {
     // 父会话优先取任务来源会话；来源缺失/不在线时回退到当前任意在线根会话（老板场景）
     const parent = agents.get(task.sourceSessionId)
       || agents.get(task.workSessionId)
@@ -284,7 +381,7 @@ export async function apply(ctx) {
     try {
       run = await subagents.start('spawn', {
         label: 'task-' + task.id + '-' + stage,
-        prompt: [{ type: 'text', text: buildPrompt(stage, task) }],
+        prompt: [{ type: 'text', text: buildPrompt(stage, task, opts) }],
         parent: parent,
         signal: makeSignal(),
         outputSchema: SCHEMAS[stage],
@@ -326,6 +423,37 @@ export async function apply(ctx) {
     await runClaim(next)
   }
 
+  // 归一化规划代理输出的澄清问题：兼容 string[] 与 {q, why}[]，最多 6 个
+  function pickQuestions(raw) {
+    if (!Array.isArray(raw)) return []
+    const out = []
+    for (const x of raw) {
+      let q = '', why = ''
+      if (typeof x === 'string') q = x
+      else if (x && typeof x.q === 'string') { q = x.q; why = typeof x.why === 'string' ? x.why : '' }
+      q = String(q).trim()
+      if (!q) continue
+      out.push({ id: 'q' + (out.length + 1), q: q, why: why.trim(), answer: '' })
+      if (out.length >= 6) break
+    }
+    return out
+  }
+
+  // 计划定稿：写 OpenSpec 产物，按 autoConfirm 决定进开发或待确认
+  async function settlePlan(task, text) {
+    await writeOpenSpec(task)
+    if (task.autoConfirm !== false) {
+      move(task, STATUS.DEVELOP, (text || '规划完成') + '，计划已自动确认，进入开发')
+      // 先释放领取锁再启动开发（否则 runDevelop 的防重入会直接返回）
+      delete task.flags.running
+      await saveState()
+      await runDevelop(task)
+    } else {
+      move(task, STATUS.CONFIRM, (text || '规划完成') + '，等待老板确认计划')
+      await saveState()
+    }
+  }
+
   async function runClaim(task) {
     if (task.status !== STATUS.TODO) return
     if (task.flags.running) return // 防重入：已有领取/规划在执行
@@ -337,16 +465,46 @@ export async function apply(ctx) {
       const s = res.structured || {}
       if (typeof s.plan === 'string' && s.plan) task.plan = s.plan
       task.steps = Array.isArray(s.steps) ? s.steps : []
-      if (task.autoConfirm !== false) {
-        move(task, STATUS.DEVELOP, '规划完成，计划已自动确认，进入开发')
-        // 先释放领取锁再启动开发（否则 runDevelop 的防重入会直接返回）
-        delete task.flags.running
+      task.risks = Array.isArray(s.risks) ? s.risks : []
+      const questions = pickQuestions(s.questions)
+      if (questions.length > 0) {
+        task.questions = questions
+        task.planDraft = task.plan
+        task.specPath = ''
+        task.specInRepo = false
+        move(task, STATUS.CLARIFY, '需求存在 ' + questions.length + ' 个不明确点，等待老板澄清后定稿计划')
         await saveState()
-        await runDevelop(task)
-      } else {
-        move(task, STATUS.CONFIRM, '规划完成，等待老板确认计划')
-        await saveState()
+        return
       }
+      task.questions = []
+      delete task.planDraft
+      await settlePlan(task, '规划完成')
+    } finally {
+      delete task.flags.running
+      await saveState()
+    }
+  }
+
+  // 澄清定稿：老板回答后重新规划一轮，产出最终计划并走定稿流程
+  async function runClarifyRefine(task) {
+    if (task.status !== STATUS.TODO) return
+    if (task.flags.running) return
+    task.flags.running = true
+    await saveState()
+    try {
+      const res = await runStage(task, 'claim', { refine: true })
+      if (!res) {
+        note(task, '澄清定稿代理执行失败，任务回到待澄清，请重新提交回答')
+        move(task, STATUS.CLARIFY, '澄清定稿失败，回到待澄清')
+        await saveState()
+        return
+      }
+      const s = res.structured || {}
+      if (typeof s.plan === 'string' && s.plan) task.plan = s.plan
+      task.steps = Array.isArray(s.steps) ? s.steps : []
+      task.risks = Array.isArray(s.risks) ? s.risks : []
+      delete task.planDraft
+      await settlePlan(task, '澄清完成，计划已定稿')
     } finally {
       delete task.flags.running
       await saveState()
@@ -418,7 +576,12 @@ export async function apply(ctx) {
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
       plan: t.plan || '',
+      planDraft: t.planDraft || '',
       steps: t.steps || [],
+      risks: t.risks || [],
+      questions: (t.questions || []).map((q) => ({ id: q.id, q: q.q, why: q.why || '', answer: q.answer || '' })),
+      specPath: t.specPath || '',
+      specInRepo: !!t.specInRepo,
       summary: t.summary || '',
       changedFiles: t.changedFiles || [],
       reviewReport: t.reviewReport || null,
@@ -435,7 +598,7 @@ export async function apply(ctx) {
   }
 
   function countsOf() {
-    const counts = { todo: 0, confirm: 0, develop: 0, review: 0, done: 0 }
+    const counts = { todo: 0, clarify: 0, confirm: 0, develop: 0, review: 0, done: 0 }
     for (const t of state.tasks) if (counts[t.status] !== undefined) counts[t.status] += 1
     return counts
   }
@@ -463,7 +626,7 @@ export async function apply(ctx) {
   // ---------- HTTP API（客户端通过 fetch 调用） ----------
   const handlers = {
     'tasks-list': async () => {
-      return { ok: true, tasks: state.tasks.map(toSummary), counts: countsOf(), labels: STATUS_LABEL, colors: STATUS_COLOR, order: [STATUS.TODO, STATUS.CONFIRM, STATUS.DEVELOP, STATUS.REVIEW, STATUS.DONE], persistenceOk: persistenceOk }
+      return { ok: true, tasks: state.tasks.map(toSummary), counts: countsOf(), labels: STATUS_LABEL, colors: STATUS_COLOR, order: STATUS_ORDER, persistenceOk: persistenceOk }
     },
     'tasks-scan': async (a) => {
       const exclude = Array.isArray(a.excludeIds) ? a.excludeIds : []
@@ -526,6 +689,28 @@ export async function apply(ctx) {
           if (task.flags.running) return { ok: false, error: '任务正在领取/规划中，请稍候' }
           kick(function () { return runClaim(task) })
           return { ok: true, message: '已开始领取并规划' }
+        }
+        if (action === 'clarify-answer') {
+          if (task.status !== STATUS.CLARIFY) return { ok: false, error: '仅「待澄清」任务可提交澄清' }
+          const qs = task.questions || []
+          if (qs.length === 0) return { ok: false, error: '该任务没有待澄清问题' }
+          const map = {}
+          if (Array.isArray(a.answers)) {
+            for (const x of a.answers) {
+              if (x && typeof x.qid === 'string' && typeof x.answer === 'string' && x.answer.trim()) map[x.qid] = x.answer.trim()
+            }
+          }
+          let answered = 0
+          task.questions = qs.map((x) => {
+            const answer = map[x.id] || ''
+            if (answer) answered += 1
+            return Object.assign({}, x, { answer: answer })
+          })
+          if (answered === 0) return { ok: false, error: '请至少回答一个问题' }
+          move(task, STATUS.TODO, '已收到澄清回答（' + answered + '/' + qs.length + '），重新定稿计划')
+          await saveState()
+          kick(function () { return runClarifyRefine(task) })
+          return { ok: true, message: '已提交澄清，正在重新规划' }
         }
         if (action === 'confirm') {
           if (task.status !== STATUS.CONFIRM) return { ok: false, error: '仅「待确认」任务可确认' }

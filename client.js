@@ -107,17 +107,17 @@ window.__ModuleLoader__.load({
     }
 
     // ---------- 共享状态 ----------
-    var savedWidth = 460;
+    var savedWidth = 720;
     try {
       var w = Number(window.localStorage.getItem("task-panel-width"));
-      if (w >= 320 && w <= 900) savedWidth = w;
+      if (w >= 400 && w <= 1100) savedWidth = w;
     } catch (err) { /* ignore */ }
 
     var store = {
       tasks: [],
       counts: {},
-      order: ["todo", "confirm", "develop", "review", "done"],
-      labels: { todo: "待领取", confirm: "待确认", develop: "开发中", review: "复核中", done: "已完成" },
+      order: ["todo", "clarify", "confirm", "develop", "review", "done"],
+      labels: { todo: "待领取", clarify: "待澄清", confirm: "待确认", develop: "开发中", review: "复核中", done: "已完成" },
       colors: {},
       open: false,
       tab: "todo",
@@ -190,7 +190,7 @@ window.__ModuleLoader__.load({
       var el = e.currentTarget;
       function onMove(ev) {
         var w = startW + (startX - ev.clientX);
-        setStore({ width: Math.max(320, Math.min(900, Math.round(w))) });
+        setStore({ width: Math.max(400, Math.min(1100, Math.round(w))) });
       }
       function onUp() {
         el.removeEventListener("pointermove", onMove);
@@ -324,10 +324,18 @@ window.__ModuleLoader__.load({
       var stNote = React.useState("");
       var stBusy = React.useState("");
       var stErr = React.useState("");
+      var stAns = React.useState({});
       var expanded = stExpanded[0], setExpanded = stExpanded[1];
       var note = stNote[0], setNote = stNote[1];
       var busy = stBusy[0], setBusy = stBusy[1];
       var err = stErr[0], setErr = stErr[1];
+      var answers = stAns[0], setAnswers = stAns[1];
+
+      function setAnswer(qid, value) {
+        var a = Object.assign({}, answers);
+        a[qid] = value;
+        setAnswers(a);
+      }
 
       function act(action) {
         setBusy(action); setErr("");
@@ -341,9 +349,26 @@ window.__ModuleLoader__.load({
           .finally(function () { setBusy(""); });
       }
 
+      function submitAnswers() {
+        var list = (task.questions || []).map(function (q) {
+          return { qid: q.id, answer: ((answers[q.id] !== undefined ? answers[q.id] : (q.answer || "")) || "").trim() };
+        });
+        setBusy("clarify-answer"); setErr("");
+        var payload = { taskId: task.id, action: "clarify-answer", answers: list };
+        if (typeof sid === "string" && sid) payload.sessionId = sid;
+        rpc("tasks-action", payload).then(function (r) {
+          if (r && r.ok) setErr(""); else setErr(r && r.error || "操作失败");
+          refresh();
+        }).catch(function (e) { setErr("操作失败: " + (e && e.message || e)); })
+          .finally(function () { setBusy(""); });
+      }
+
       var actions = [];
       if (task.status === "todo") {
         actions.push({ label: "🚀 领取并规划", action: "claim", primary: true });
+        actions.push({ label: "🗑 删除", action: "delete" });
+      } else if (task.status === "clarify") {
+        actions.push({ label: "✅ 提交澄清并定稿", action: "clarify-answer", primary: true });
         actions.push({ label: "🗑 删除", action: "delete" });
       } else if (task.status === "confirm") {
         actions.push({ label: "✅ 确认计划", action: "confirm", primary: true });
@@ -377,6 +402,26 @@ window.__ModuleLoader__.load({
           task.description ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "需求")), task.description]) : null,
           task.acceptance ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "验收标准")), task.acceptance]) : null,
           task.plan ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "实施计划")), task.plan]) : null,
+          task.planDraft ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "计划草稿（待澄清定稿）")), task.planDraft]) : null,
+          (task.questions || []).length > 0 && task.status === "clarify" ? React.createElement("div", { className: "tp-sec", onClick: function (e) { e.stopPropagation(); } }, [
+            React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "待澄清问题（至少回答一个，其余按未回答处理）")),
+            task.questions.map(function (q) {
+              return React.createElement("div", { key: q.id, style: { marginBottom: 8 } }, [
+                React.createElement("div", { className: "tp-kv" }, "Q" + q.id.slice(1) + ". " + q.q + (q.why ? "（" + q.why + "）" : "")),
+                React.createElement("textarea", { className: "tp-textarea", rows: 2, placeholder: "你的回答…", value: answers[q.id] !== undefined ? answers[q.id] : (q.answer || ""), onChange: function (e) { setAnswer(q.id, e.target.value); } })
+              ]);
+            })
+          ]) : null,
+          (task.questions || []).length > 0 && task.status !== "clarify" ? React.createElement("div", { className: "tp-sec" }, [
+            React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "澄清问答")),
+            task.questions.map(function (q) {
+              return React.createElement("div", { key: q.id }, "Q" + q.id.slice(1) + ". " + q.q + " → " + (q.answer || "（未回答）"));
+            })
+          ]) : null,
+          task.specPath ? React.createElement("div", { className: "tp-sec" }, [
+            React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "OpenSpec 产物")),
+            task.specPath + (task.specInRepo ? "" : "（目标仓库不可写，回退于面板目录）")
+          ]) : null,
           task.summary ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "实现摘要")), task.summary]) : null,
           task.reviewReport ? React.createElement("div", { className: "tp-sec" }, [
             React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "复核报告")),
@@ -411,7 +456,10 @@ window.__ModuleLoader__.load({
                 key: btn.action,
                 className: "tp-btn" + (btn.primary ? " tp-btn-primary" : ""),
                 disabled: busy === btn.action,
-                onClick: function () { act(btn.action); }
+                onClick: function () {
+                  if (btn.action === "clarify-answer") submitAnswers();
+                  else act(btn.action);
+                }
               }, busy === btn.action ? "处理中…" : btn.label);
             })
           ]) : null,
@@ -433,7 +481,7 @@ window.__ModuleLoader__.load({
         }
         return [];
       })();
-      var badge = (st.counts.todo || 0) + (st.counts.confirm || 0) + (st.counts.review || 0);
+      var badge = (st.counts.todo || 0) + (st.counts.clarify || 0) + (st.counts.confirm || 0) + (st.counts.review || 0);
       // 面板默认收起：open=false 时不渲染遮罩/抽屉（✕ 按钮与背景遮罩的 closePanel 因此真正生效）。
       // Esc 监听：面板打开时按下 Escape 即收起；清理函数避免重复监听。置于条件 return 之前遵守 hooks 规则。
       React.useEffect(function () {
@@ -497,7 +545,7 @@ window.__ModuleLoader__.load({
     // ---------- 组件：侧边栏按钮 ----------
     function SidebarButton(props) {
       var st = useStore();
-      var badge = (st.counts.todo || 0) + (st.counts.confirm || 0) + (st.counts.review || 0);
+      var badge = (st.counts.todo || 0) + (st.counts.clarify || 0) + (st.counts.confirm || 0) + (st.counts.review || 0);
       return React.createElement("button", {
         className: "tp-side-btn" + (props.wide ? "" : " tp-side-rail") + (st.open ? " tp-side-active" : ""),
         title: "任务面板" + (badge > 0 ? "（" + badge + " 件待处理）" : ""),
