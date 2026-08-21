@@ -21,11 +21,11 @@ export async function apply(ctx) {
   // ---------- 常量 ----------
   const PROJECT_DIR = '/Users/lihang/gitlab1/dsh-task-panel'
   const FILE = 'tasks.json'
-  const STATUS = { TODO: 'todo', CLARIFY: 'clarify', CONFIRM: 'confirm', DEVELOP: 'develop', REVIEW: 'review', DONE: 'done' }
-  const STATUS_LABEL = { todo: '待领取', clarify: '待澄清', confirm: '待确认', develop: '开发中', review: '复核中', done: '已完成' }
-  const STATUS_COLOR = { todo: '#94a3b8', clarify: '#ec4899', confirm: '#f59e0b', develop: '#3b82f6', review: '#8b5cf6', done: '#22c55e' }
+  const STATUS = { TODO: 'todo', CLARIFY: 'clarify', CONFIRM: 'confirm', DEVELOP: 'develop', PAUSED: 'paused', REVIEW: 'review', DONE: 'done' }
+  const STATUS_LABEL = { todo: '待领取', clarify: '待澄清', confirm: '待确认', develop: '开发中', paused: '暂停中', review: '复核中', done: '已完成' }
+  const STATUS_COLOR = { todo: '#94a3b8', clarify: '#ec4899', confirm: '#f59e0b', develop: '#3b82f6', paused: '#f97316', review: '#8b5cf6', done: '#22c55e' }
   const STAGE_LABEL = { claim: '规划', refine: '澄清定稿', develop: '开发', review: '复核' }
-  const STATUS_ORDER = [STATUS.TODO, STATUS.CLARIFY, STATUS.CONFIRM, STATUS.DEVELOP, STATUS.REVIEW, STATUS.DONE]
+  const STATUS_ORDER = [STATUS.TODO, STATUS.CLARIFY, STATUS.CONFIRM, STATUS.DEVELOP, STATUS.PAUSED, STATUS.REVIEW, STATUS.DONE]
   const MAX_CONCURRENT_DEVELOP = 1
 
   // fs.writeText 需要显式沙箱策略：默认按 workspace-write 裁定（workspaceRoot=进程 cwd），
@@ -99,7 +99,6 @@ export async function apply(ctx) {
     return out.trim()
   }
   // 静态插件运行在 Node 环境，使用真实 AbortController
-  const makeSignal = () => new AbortController().signal
   const kick = (fn) => {
     Promise.resolve().then(fn).catch((err) => console.error('[task-panel] 异步任务异常:', err && err.message || err))
   }
@@ -160,6 +159,8 @@ export async function apply(ctx) {
             t.planDraft = typeof t.planDraft === 'string' ? t.planDraft : undefined
             t.specPath = typeof t.specPath === 'string' ? t.specPath : ''
             t.specInRepo = !!t.specInRepo
+            t.pausedFrom = typeof t.pausedFrom === 'string' ? t.pausedFrom : '' // 旧数据兜底
+            t.pausedFromRunning = !!t.pausedFromRunning
           }
           console.log('[task-panel] 已加载任务库:', c.dir, state.tasks.length, '个任务')
           break
@@ -377,21 +378,30 @@ export async function apply(ctx) {
       await saveState()
       return null
     }
+    // 挂到 task.flags.abort 供「暂停」中断正在运行的子代理
+    const abort = new AbortController()
+    task.flags.abort = abort
     let run
     try {
       run = await subagents.start('spawn', {
         label: 'task-' + task.id + '-' + stage,
         prompt: [{ type: 'text', text: buildPrompt(stage, task, opts) }],
         parent: parent,
-        signal: makeSignal(),
+        signal: abort.signal,
         outputSchema: SCHEMAS[stage],
       })
     } catch (err) {
+      if (task.flags.abort === abort) delete task.flags.abort
       note(task, '启动' + stageLabel(stage) + '代理失败: ' + (err && err.message || String(err)))
       await saveState()
       return null
     }
     task.flags.runId = run.id
+    // 记录每个阶段的子会话 id 与其父会话 id（供面板「点击跳转到会话」使用）
+    task.flags.stageRunIds = task.flags.stageRunIds || {}
+    task.flags.stageParents = task.flags.stageParents || {}
+    task.flags.stageRunIds[stage] = run.id
+    task.flags.stageParents[stage] = parent.id
     if (stage === 'develop') task.workSessionId = run.id
     note(task, '已启动' + stageLabel(stage) + '代理（子会话 ' + run.id + '）')
     await saveState()
@@ -403,9 +413,16 @@ export async function apply(ctx) {
       return { structured: structured, output: output, stopReason: result && result.stopReason }
     } catch (err) {
       await run.dispose().catch(function () {})
-      note(task, stageLabel(stage) + '代理异常: ' + (err && err.message || String(err)))
+      const msg = err && err.message || String(err)
+      if (err && (err.name === 'AbortError' || /abort|cancel/i.test(msg))) {
+        note(task, stageLabel(stage) + '代理已因暂停中断')
+      } else {
+        note(task, stageLabel(stage) + '代理异常: ' + msg)
+      }
       await saveState()
       return null
+    } finally {
+      if (task.flags.abort === abort) delete task.flags.abort
     }
   }
 
@@ -441,7 +458,9 @@ export async function apply(ctx) {
 
   // 计划定稿：写 OpenSpec 产物，按 autoConfirm 决定进开发或待确认
   async function settlePlan(task, text) {
+    if (task.status === STATUS.PAUSED) return // 暂停守卫：暂停后不得继续流转
     await writeOpenSpec(task)
+    if (task.status === STATUS.PAUSED) return
     if (task.autoConfirm !== false) {
       move(task, STATUS.DEVELOP, (text || '规划完成') + '，计划已自动确认，进入开发')
       // 先释放领取锁再启动开发（否则 runDevelop 的防重入会直接返回）
@@ -461,7 +480,7 @@ export async function apply(ctx) {
     await saveState()
     try {
       const res = await runStage(task, 'claim')
-      if (!res) return
+      if (!res || task.status === STATUS.PAUSED) return // 暂停守卫：中止/暂停后不再继续
       const s = res.structured || {}
       if (typeof s.plan === 'string' && s.plan) task.plan = s.plan
       task.steps = Array.isArray(s.steps) ? s.steps : []
@@ -493,10 +512,12 @@ export async function apply(ctx) {
     await saveState()
     try {
       const res = await runStage(task, 'claim', { refine: true })
-      if (!res) {
-        note(task, '澄清定稿代理执行失败，任务回到待澄清，请重新提交回答')
-        move(task, STATUS.CLARIFY, '澄清定稿失败，回到待澄清')
-        await saveState()
+      if (!res || task.status === STATUS.PAUSED) {
+        if (task.status !== STATUS.PAUSED) {
+          note(task, '澄清定稿代理执行失败，任务回到待澄清，请重新提交回答')
+          move(task, STATUS.CLARIFY, '澄清定稿失败，回到待澄清')
+          await saveState()
+        }
         return
       }
       const s = res.structured || {}
@@ -524,7 +545,7 @@ export async function apply(ctx) {
     task.flags.running = true
     try {
       const res = await runStage(task, 'develop')
-      if (!res) return
+      if (!res || task.status === STATUS.PAUSED) return // 暂停守卫：中止/暂停后不再继续
       const s = res.structured || {}
       if (typeof s.summary === 'string' && s.summary) task.summary = s.summary
       task.changedFiles = Array.isArray(s.changedFiles) ? s.changedFiles : []
@@ -547,7 +568,7 @@ export async function apply(ctx) {
   async function runReview(task) {
     if (task.status !== STATUS.REVIEW) return
     const res = await runStage(task, 'review')
-    if (!res) return
+    if (!res || task.status === STATUS.PAUSED) return // 暂停守卫：中止/暂停后不再继续
     const s = res.structured || {}
     task.reviewReport = {
       passed: s.passed === true,
@@ -590,15 +611,26 @@ export async function apply(ctx) {
       sourceCwd: t.sourceCwd || '',
       repoPath: t.repoPath || '',
       workSessionId: t.workSessionId || '',
+      stageSessions: (function () {
+        const ids = (t.flags && t.flags.stageRunIds) || {}
+        const parents = (t.flags && t.flags.stageParents) || {}
+        const out = {}
+        for (const s of ['claim', 'develop', 'review']) {
+          out[s] = { id: (s === 'develop' ? t.workSessionId || ids[s] : ids[s]) || '', parent: parents[s] || '' }
+        }
+        return out
+      })(),
       autoRun: t.autoRun !== false,
       autoConfirm: t.autoConfirm !== false,
       running: !!t.flags.running,
+      pausedFrom: t.pausedFrom || '',
+      pausedFromRunning: !!t.pausedFromRunning,
       history: (t.history || []).slice(-30),
     }
   }
 
   function countsOf() {
-    const counts = { todo: 0, clarify: 0, confirm: 0, develop: 0, review: 0, done: 0 }
+    const counts = { todo: 0, clarify: 0, confirm: 0, develop: 0, paused: 0, review: 0, done: 0 }
     for (const t of state.tasks) if (counts[t.status] !== undefined) counts[t.status] += 1
     return counts
   }
@@ -728,7 +760,7 @@ export async function apply(ctx) {
         }
         if (action === 'accept') {
           if (task.status !== STATUS.REVIEW) return { ok: false, error: '仅「复核中」任务可验收' }
-          move(task, STATUS.DONE, '老板验收通过 🎉')
+          move(task, STATUS.DONE, '老板验收通过')
           await saveState()
           kick(maybeAdvanceQueue)
           return { ok: true, message: '验收通过' }
@@ -757,15 +789,64 @@ export async function apply(ctx) {
           }
           return { ok: false, error: '当前状态无需重新执行' }
         }
+        if (action === 'pause') {
+          if (task.status === STATUS.DONE || task.status === STATUS.PAUSED) return { ok: false, error: '已完成 / 已暂停任务不可再暂停' }
+          task.pausedFrom = task.status
+          task.pausedFromRunning = !!task.flags.running
+          // 运行中：中断当前阶段子代理（runner 的 finally 会正常释放名额，暂停守卫阻止继续流转）
+          if (task.flags.abort && task.flags.abort.abort) {
+            try { task.flags.abort.abort() } catch (e) { /* ignore */ }
+          }
+          move(task, STATUS.PAUSED, '任务已暂停' + (task.pausedFromRunning ? '（执行中，子代理已中断）' : '') + '，可「继续执行」恢复或「重新编辑」调整方向')
+          await saveState()
+          return { ok: true, message: '已暂停' }
+        }
+        if (action === 'resume') {
+          if (task.status !== STATUS.PAUSED) return { ok: false, error: '仅「暂停中」任务可继续执行' }
+          const from = task.pausedFrom || STATUS.TODO
+          const wasRunning = !!task.pausedFromRunning
+          task.pausedFrom = ''
+          task.pausedFromRunning = false
+          move(task, from, '任务已恢复执行（原状态：' + (STATUS_LABEL[from] || from) + (wasRunning ? '，继续原阶段' : '') + '）')
+          await saveState()
+          if (wasRunning) {
+            // 暂停时在跑：恢复后重踢对应阶段
+            if (from === STATUS.TODO) kick(maybeAdvanceQueue)
+            else if (from === STATUS.DEVELOP) kick(function () { return runDevelop(task) })
+            else if (from === STATUS.REVIEW) kick(function () { return runReview(task) })
+            // confirm / clarify：恢复到对应 Tab 等老板操作
+          } else if (from === STATUS.TODO && task.autoRun !== false) {
+            kick(maybeAdvanceQueue)
+          }
+          return { ok: true, message: '已恢复执行' }
+        }
         if (action === 'delete') {
           state.tasks = state.tasks.filter((t) => t.id !== task.id)
           await saveState()
           return { ok: true, deleted: true }
         }
         if (action === 'edit') {
+          if (task.status !== STATUS.PAUSED) return { ok: false, error: '仅「暂停中」任务可编辑（请先暂停任务，再重新编辑调整方向）' }
+          const prev = { title: task.title, description: task.description, acceptance: task.acceptance }
           if (typeof a.title === 'string' && a.title.trim()) task.title = a.title.trim()
-          if (typeof a.acceptance === 'string') task.acceptance = a.acceptance
           if (typeof a.description === 'string') task.description = a.description
+          if (typeof a.acceptance === 'string') task.acceptance = a.acceptance
+          const changed = []
+          if (task.title !== prev.title) changed.push('标题')
+          if (task.description !== prev.description) changed.push('描述')
+          if (task.acceptance !== prev.acceptance) changed.push('验收标准')
+          if (changed.length > 0) {
+            // 破坏性操作：清空旧产物，使下次运行按新方向重新生成（留痕）
+            delete task.plan
+            delete task.planDraft
+            task.steps = []
+            task.risks = []
+            task.questions = []
+            task.summary = ''
+            task.reviewReport = null
+            task.changedFiles = []
+            note(task, '老板重新编辑：' + changed.join('、') + ' —— 旧计划与产物已清空，后续按新方向重新生成')
+          }
           await saveState()
           return { ok: true, task: toSummary(task) }
         }

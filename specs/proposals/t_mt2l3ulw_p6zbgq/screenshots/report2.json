@@ -1,0 +1,25 @@
+{
+  "light": {
+    "tpBg": "#ffffff",
+    "tpFg": "#1e293b",
+    "iconStroke": "rgb(30, 41, 59)",
+    "iconFill": "none"
+  },
+  "dark": {
+    "tpBg": "#111827",
+    "tpFg": "#e2e8f0",
+    "iconStroke": "rgb(226, 232, 240)",
+    "iconFill": "none"
+  },
+  "drag": {
+    "before": {
+      "width": 720,
+      "left": 880
+    },
+    "after": {
+      "width": 840,
+      "left": 760
+    },
+    "changed": true
+  }
+}

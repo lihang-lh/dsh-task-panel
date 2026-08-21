@@ -6,6 +6,9 @@
  *   factory(require) 返回 module.exports = { inject, apply }。
  *
  * 与 Host 的通信走 HTTP：fetch("/dsh-task-panel/api/<method>")。
+ *
+ * 图标：内置 Feather/Lucide 风格线性 stroke SVG（24×24、currentColor、
+ * strokeWidth 2），零外部依赖、CSP 安全、离线可用。
  */
 window.__ModuleLoader__.load({
   id: "dsh-task-panel",
@@ -32,23 +35,22 @@ window.__ModuleLoader__.load({
       ".tp-resize{position:absolute;left:0;top:0;bottom:0;width:6px;cursor:ew-resize;z-index:3;touch-action:none}",
       ".tp-resize:hover,.tp-resize:active{background:rgba(59,130,246,.35)}",
       ".tp-header{display:flex;align-items:center;gap:8px;padding:12px 14px 8px 16px}",
-      ".tp-header-title{font-size:15px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+      ".tp-header-title{font-size:15px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px}",
       ".tp-header-actions{display:flex;gap:2px;flex-shrink:0}",
       ".tp-counts-row{display:flex;gap:4px;padding:0 16px 10px;flex-wrap:wrap;border-bottom:1px solid rgba(127,127,127,.2)}",
       ".tp-count-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--tp-dim,#64748b);background:rgba(127,127,127,.1);border-radius:9px;padding:1px 7px;white-space:nowrap}",
       ".tp-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0}",
-      ".tp-icon-btn{border:none;background:transparent;cursor:pointer;font-size:14px;color:inherit;border-radius:6px;padding:6px 8px;flex-shrink:0;line-height:1}",
+      ".tp-icon-btn{border:none;background:transparent;cursor:pointer;font-size:14px;color:inherit;border-radius:6px;padding:6px 8px;flex-shrink:0;line-height:1;display:inline-flex;align-items:center;justify-content:center}",
       ".tp-icon-btn:hover{background:rgba(127,127,127,.15)}",
       ".tp-body{flex:1;overflow-y:auto;padding:10px 16px 16px}",
-      ".tp-pub-toggle{width:100%;text-align:left;border:1px dashed rgba(127,127,127,.4);background:transparent;color:inherit;border-radius:8px;padding:8px 10px;cursor:pointer;font-size:13px;margin-bottom:10px}",
-      ".tp-pub-toggle:hover{border-color:var(--tp-accent,#3b82f6);color:var(--tp-accent,#3b82f6)}",
-      ".tp-pub-body{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;border:1px solid rgba(127,127,127,.25);border-radius:10px;padding:12px}",
+      ".tp-pub-btn{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px dashed rgba(127,127,127,.4);background:transparent;color:inherit;border-radius:8px;padding:8px 10px;cursor:pointer;font-size:13px;margin-bottom:10px;transition:border-color .18s ease,color .18s ease}",
+      ".tp-pub-btn:hover{border-color:var(--tp-accent,#3b82f6);color:var(--tp-accent,#3b82f6)}",
       ".tp-input,.tp-textarea{width:100%;box-sizing:border-box;border:1px solid rgba(127,127,127,.35);border-radius:8px;background:transparent;color:inherit;padding:7px 10px;font-size:13px;font-family:inherit}",
       ".tp-input:focus,.tp-textarea:focus{outline:none;border-color:var(--tp-accent,#3b82f6)}",
       ".tp-toggle-row{display:flex;gap:16px;font-size:12px}",
       ".tp-toggle-row label{display:inline-flex;align-items:center;gap:4px;cursor:pointer}",
       ".tp-btn-row{display:flex;gap:8px}",
-      ".tp-btn{border:1px solid rgba(127,127,127,.4);background:transparent;color:inherit;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}",
+      ".tp-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid rgba(127,127,127,.4);background:transparent;color:inherit;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;transition:border-color .18s ease,color .18s ease}",
       ".tp-btn:hover{border-color:var(--tp-accent,#3b82f6);color:var(--tp-accent,#3b82f6)}",
       ".tp-btn:disabled{opacity:.5;cursor:not-allowed}",
       ".tp-btn-primary{background:var(--tp-accent,#3b82f6);border-color:var(--tp-accent,#3b82f6);color:#fff}",
@@ -71,21 +73,37 @@ window.__ModuleLoader__.load({
       ".tp-card-row{display:flex;align-items:center;gap:8px}",
       ".tp-card-title{font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
       ".tp-card-status{font-size:11px;color:var(--tp-dim,#64748b);white-space:nowrap}",
-      ".tp-card-meta{font-size:11px;color:var(--tp-dim,#64748b);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}",
-      ".tp-running{color:var(--tp-accent,#3b82f6);font-weight:600}",
+      ".tp-card-meta{font-size:11px;color:var(--tp-dim,#64748b);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}",
+      ".tp-meta-ic{vertical-align:-2px;flex-shrink:0}",
+      ".tp-running{color:var(--tp-accent,#3b82f6);font-weight:600;display:inline-flex;align-items:center;gap:5px}",
+      ".tp-chev{display:inline-flex;align-items:center;color:var(--tp-dim,#64748b);transition:transform .18s ease;flex-shrink:0}",
+      ".tp-chev.tp-chev-open{transform:rotate(180deg)}",
       ".tp-card-body{margin-top:8px;border-top:1px dashed rgba(127,127,127,.25);padding-top:8px;display:flex;flex-direction:column;gap:6px}",
       ".tp-kv{font-size:12px}",
       ".tp-kv b{color:var(--tp-dim,#64748b);font-weight:600;margin-right:6px}",
       ".tp-sec{font-size:12px;white-space:pre-wrap;word-break:break-word}",
+      ".tp-kv-line{display:flex;align-items:center;gap:5px;font-size:12px}",
+      ".tp-ok{color:#22c55e}",
+      ".tp-bad{color:#ef4444}",
+      ".tp-warn{color:#ef4444;flex-shrink:0}",
       ".tp-sess{display:inline-flex;align-items:center;gap:4px;max-width:100%;border:1px solid rgba(127,127,127,.3);border-radius:12px;padding:2px 8px;font-size:11px;cursor:pointer;margin:2px 4px 2px 0}",
       ".tp-sess:hover{border-color:var(--tp-accent,#3b82f6);color:var(--tp-accent,#3b82f6)}",
       ".tp-sess-t{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
       ".tp-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}",
       ".tp-hist{font-size:11px;color:var(--tp-dim,#64748b);max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}",
       ".tp-hist-item{display:flex;gap:6px}",
-      ".tp-footer{padding:8px 16px;border-top:1px solid rgba(127,127,127,.2);font-size:11px;color:var(--tp-dim,#64748b)}",
-      "@media (prefers-color-scheme: dark){.tp-drawer{--tp-bg:#111827;--tp-fg:#e2e8f0;--tp-dim:#94a3b8;--tp-accent:#60a5fa}.tp-backdrop{background:rgba(0,0,0,.5)}}",
-      "@media (prefers-color-scheme: light){.tp-drawer{--tp-bg:#ffffff;--tp-fg:#1e293b;--tp-dim:#64748b;--tp-accent:#3b82f6}}"
+      ".tp-footer{padding:8px 16px;border-top:1px solid rgba(127,127,127,.2);font-size:11px;color:var(--tp-dim,#64748b);display:flex;align-items:center;gap:5px}",
+      ".tp-dialog-mask{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px}",
+      ".tp-dialog{background:var(--tp-bg,#ffffff);color:var(--tp-fg,#1e293b);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35);width:min(560px,94vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden}",
+      ".tp-dialog-header{display:flex;align-items:center;gap:8px;padding:14px 16px 10px;border-bottom:1px solid rgba(127,127,127,.2)}",
+      ".tp-dialog-title{font-size:14px;font-weight:700;flex:1;display:flex;align-items:center;gap:6px}",
+      ".tp-dialog-body{display:flex;flex-direction:column;gap:8px;padding:12px 16px;overflow-y:auto}",
+      ".tp-dialog-actions{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid rgba(127,127,127,.2)}",
+      ".tp-spin{animation:tp-spin 1s linear infinite}",
+      "@keyframes tp-spin{to{transform:rotate(360deg)}}",
+      ".tp-btn:focus-visible,.tp-icon-btn:focus-visible,.tp-tab:focus-visible,.tp-side-btn:focus-visible,.tp-pub-btn:focus-visible{outline:2px solid var(--tp-accent,#3b82f6);outline-offset:1px}",
+      "@media (prefers-color-scheme: dark){.tp-wrap{--tp-bg:#111827;--tp-fg:#e2e8f0;--tp-dim:#94a3b8;--tp-accent:#60a5fa}.tp-backdrop{background:rgba(0,0,0,.5)}}",
+      "@media (prefers-color-scheme: light){.tp-wrap{--tp-bg:#ffffff;--tp-fg:#1e293b;--tp-dim:#64748b;--tp-accent:#3b82f6}}"
     ].join("\n");
 
     function ensureStyles() {
@@ -106,6 +124,68 @@ window.__ModuleLoader__.load({
       }).then(function (r) { return r.json() });
     }
 
+    // ---------- 内联 SVG 图标（Feather/Lucide 风格，24×24 stroke） ----------
+    // 每项：[标签名, 属性]；由 Icon 组件渲染为 <svg> 子元素。全部内联，零外部依赖。
+    var ICONS = {
+      "plus": [["line", { x1: 12, y1: 5, x2: 12, y2: 19 }], ["line", { x1: 5, y1: 12, x2: 19, y2: 12 }]],
+      "send": [["line", { x1: 22, y1: 2, x2: 11, y2: 13 }], ["polygon", { points: "22 2 15 22 11 13 2 9 22 2" }]],
+      "search": [["circle", { cx: 11, cy: 11, r: 8 }], ["line", { x1: 21, y1: 21, x2: 16.65, y2: 16.65 }]],
+      "rocket": [["path", { d: "M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" }], ["path", { d: "M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" }], ["path", { d: "M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" }], ["path", { d: "M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" }]],
+      "play": [["polygon", { points: "5 3 19 12 5 21 5 3" }]],
+      "pause": [["rect", { x: 6, y: 4, width: 4, height: 16 }], ["rect", { x: 14, y: 4, width: 4, height: 16 }]],
+      "check": [["polyline", { points: "20 6 9 17 4 12" }]],
+      "check-circle": [["path", { d: "M22 11.08V12a10 10 0 1 1-5.93-9.14" }], ["polyline", { points: "22 4 12 14.01 9 11.01" }]],
+      "x-circle": [["circle", { cx: 12, cy: 12, r: 10 }], ["line", { x1: 15, y1: 9, x2: 9, y2: 15 }], ["line", { x1: 9, y1: 9, x2: 15, y2: 15 }]],
+      "rotate-ccw": [["polyline", { points: "1 4 1 10 7 10" }], ["path", { d: "M3.51 15a9 9 0 1 0 2.13-9.36L1 10" }]],
+      "refresh-cw": [["polyline", { points: "23 4 23 10 17 10" }], ["polyline", { points: "1 20 1 14 7 14" }], ["path", { d: "M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" }]],
+      "trash": [["polyline", { points: "3 6 5 6 21 6" }], ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" }], ["line", { x1: 10, y1: 11, x2: 10, y2: 17 }], ["line", { x1: 14, y1: 11, x2: 14, y2: 17 }]],
+      "edit": [["path", { d: "M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" }]],
+      "chevron-down": [["polyline", { points: "6 9 12 15 18 9" }]],
+      "x": [["line", { x1: 18, y1: 6, x2: 6, y2: 18 }], ["line", { x1: 6, y1: 6, x2: 18, y2: 18 }]],
+      "alert-triangle": [["path", { d: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" }], ["line", { x1: 12, y1: 9, x2: 12, y2: 13 }], ["line", { x1: 12, y1: 17, x2: 12.01, y2: 17 }]],
+      "clipboard": [["path", { d: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" }], ["rect", { x: 8, y: 2, width: 8, height: 4, rx: 1, ry: 1 }]],
+      "loader": [["line", { x1: 12, y1: 2, x2: 12, y2: 6 }], ["line", { x1: 12, y1: 18, x2: 12, y2: 22 }], ["line", { x1: 4.93, y1: 4.93, x2: 7.76, y2: 7.76 }], ["line", { x1: 16.24, y1: 16.24, x2: 19.07, y2: 19.07 }], ["line", { x1: 2, y1: 12, x2: 6, y2: 12 }], ["line", { x1: 18, y1: 12, x2: 22, y2: 12 }], ["line", { x1: 4.93, y1: 19.07, x2: 7.76, y2: 16.24 }], ["line", { x1: 16.24, y1: 7.76, x2: 19.07, y2: 4.93 }]],
+      "folder": [["path", { d: "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" }]],
+      "clock": [["circle", { cx: 12, cy: 12, r: 10 }], ["polyline", { points: "12 6 12 12 16 14" }]],
+      "link": [["path", { d: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" }], ["path", { d: "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" }]],
+      "message-square": [["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }]]
+    };
+
+    /** 渲染一个内联 SVG 图标：<Icon name="rocket" size={16} className="..."/> */
+    function Icon(props) {
+      var items = ICONS[props.name] || [];
+      var size = props.size || 16;
+      return React.createElement("svg", {
+        className: "tp-ic" + (props.className ? " " + props.className : ""),
+        width: size,
+        height: size,
+        viewBox: "0 0 24 24",
+        fill: "none",
+        stroke: "currentColor",
+        strokeWidth: 2,
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        "aria-hidden": "true"
+      }, items.map(function (d, i) {
+        return React.createElement(d[0], Object.assign({ key: i }, d[1]));
+      }));
+    }
+
+    /** 图标+文字按钮（busy 时显示 spinner + 处理中…） */
+    function ActionButton(props) {
+      return React.createElement("button", {
+        className: "tp-btn" + (props.primary ? " tp-btn-primary" : ""),
+        disabled: props.busy,
+        title: props.title || props.label,
+        onClick: props.onClick
+      }, [
+        props.busy
+          ? React.createElement(Icon, { name: "loader", size: 14, className: "tp-spin" })
+          : React.createElement(Icon, { name: props.icon || "check", size: 14 }),
+        React.createElement("span", null, props.busy ? "处理中…" : props.label)
+      ]);
+    }
+
     // ---------- 共享状态 ----------
     var savedWidth = 720;
     try {
@@ -116,13 +196,14 @@ window.__ModuleLoader__.load({
     var store = {
       tasks: [],
       counts: {},
-      order: ["todo", "clarify", "confirm", "develop", "review", "done"],
-      labels: { todo: "待领取", clarify: "待澄清", confirm: "待确认", develop: "开发中", review: "复核中", done: "已完成" },
-      colors: {},
+      order: ["todo", "clarify", "confirm", "develop", "paused", "review", "done"],
+      labels: { todo: "待领取", clarify: "待澄清", confirm: "待确认", develop: "开发中", paused: "暂停中", review: "复核中", done: "已完成" },
+      colors: { todo: "#94a3b8", clarify: "#ec4899", confirm: "#f59e0b", develop: "#3b82f6", paused: "#f97316", review: "#8b5cf6", done: "#22c55e" },
       open: false,
       tab: "todo",
       width: savedWidth,
-      persistenceOk: true
+      persistenceOk: true,
+      modal: null // null | {kind:'publish'} | {kind:'edit', taskId}
     };
     var listeners = [];
     function setStore(patch) {
@@ -156,6 +237,8 @@ window.__ModuleLoader__.load({
       }).catch(function (err) { console.error("[task-panel] 刷新失败", err); });
     }
     function closePanel() { setStore({ open: false }); }
+    function openModal(m) { setStore({ modal: m }); }
+    function closeModal() { setStore({ modal: null }); }
 
     // ---------- 工具 ----------
     function currentSession(props) {
@@ -171,6 +254,24 @@ window.__ModuleLoader__.load({
       }
       if (props && typeof props.sessionId === "string" && props.sessionId) return props.sessionId;
       return undefined;
+    }
+    /** 跳转到根会话（发布会话 / 关联会话） */
+    function openSession(id) {
+      if (!id) return;
+      if (exports.sessionOpen) {
+        try { exports.sessionOpen(id); } catch (err) { console.error("[task-panel] 打开会话失败", err); }
+      }
+    }
+    /** 跳转到子会话（规划/开发/复核子代理）：优先按目录地址 openSubagent，回退 open */
+    function openChildSession(childId) {
+      if (!childId) return;
+      if (exports.sessionAddress && exports.sessionOpenSubagent) {
+        try {
+          var addr = exports.sessionAddress(childId);
+          if (addr) { exports.sessionOpenSubagent(addr); return; }
+        } catch (err) { /* fall through */ }
+      }
+      openSession(childId);
     }
     function relTime(iso) {
       if (!iso) return "";
@@ -203,12 +304,11 @@ window.__ModuleLoader__.load({
       try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     }
 
-    // ---------- 组件：发布区 ----------
+    // ---------- 组件：发布弹窗 ----------
     var EMPTY_ITEMS = [];
-    function PublishBox(props) {
+    function PublishDialog(props) {
       var sid = props.sid;
       var repos = props.repos || [];
-      var stOpen = React.useState(false);
       var stTitle = React.useState("");
       var stDesc = React.useState("");
       var stAcc = React.useState("");
@@ -221,7 +321,6 @@ window.__ModuleLoader__.load({
       var stMsg = React.useState("");
       var stErr = React.useState(false);
       var stRepo = React.useState("");
-      var open = stOpen[0], setOpen = stOpen[1];
       var title = stTitle[0], setTitle = stTitle[1];
       var desc = stDesc[0], setDesc = stDesc[1];
       var acc = stAcc[0], setAcc = stAcc[1];
@@ -260,9 +359,9 @@ window.__ModuleLoader__.load({
         if (related.length > 0) payload.related = related;
         rpc("tasks-create", payload).then(function (r) {
           if (r && r.ok) {
+            // 发布成功：自动关窗并刷新
             setTitle(""); setDesc(""); setAcc(""); setHits([]); setSelected({});
-            setMsg("已发布「" + r.task.title + "」→ " + r.task.statusLabel);
-            setOpen(false);
+            props.onClose();
             refresh();
           } else {
             setErr(true); setMsg(r && r.error || "发布失败");
@@ -271,53 +370,140 @@ window.__ModuleLoader__.load({
           .finally(function () { setBusy(false); });
       }
 
-      return React.createElement("div", { className: "tp-publish" }, [
-        React.createElement("button", { className: "tp-pub-toggle", onClick: function () { setOpen(!open); } }, open ? "▾ 收起发布区" : "▸ 发布新任务"),
-        open ? React.createElement("div", { className: "tp-pub-body" }, [
-          React.createElement("input", { className: "tp-input", placeholder: "任务标题（必填）", value: title, onChange: function (e) { setTitle(e.target.value); } }),
-          React.createElement("textarea", { className: "tp-textarea", rows: 2, placeholder: "需求描述（可选）", value: desc, onChange: function (e) { setDesc(e.target.value); } }),
-          React.createElement("textarea", { className: "tp-textarea", rows: 2, placeholder: "验收标准（可选）", value: acc, onChange: function (e) { setAcc(e.target.value); } }),
-          React.createElement("select", { className: "tp-input", value: repo, onChange: function (e) { setRepo(e.target.value); } }, [
-            React.createElement("option", { key: "auto", value: "" }, "目标仓库：自动识别（默认发布会话所在仓库）"),
-            repos.map(function (w) {
-              return React.createElement("option", { key: w.value, value: w.value }, w.label + " · " + w.value);
-            })
-          ]),
-          React.createElement("div", { className: "tp-toggle-row" }, [
-            React.createElement("label", null, [
-              React.createElement("input", { type: "checkbox", checked: autoRun, onChange: function (e) { setAutoRun(e.target.checked); } }),
-              "自动执行（插件领取并调度）"
+      return React.createElement("div", { className: "tp-dialog-mask", onClick: props.onClose }, [
+        React.createElement("div", { className: "tp-dialog", onClick: function (e) { e.stopPropagation(); } }, [
+          React.createElement("div", { className: "tp-dialog-header" }, [
+            React.createElement("span", { className: "tp-dialog-title" }, [
+              React.createElement(Icon, { name: "send", size: 15 }),
+              React.createElement("span", null, "发布新任务")
             ]),
-            React.createElement("label", null, [
-              React.createElement("input", { type: "checkbox", checked: autoConfirm, onChange: function (e) { setAutoConfirm(e.target.checked); } }),
-              "自动确认计划"
+            React.createElement("button", { className: "tp-icon-btn", title: "关闭", onClick: props.onClose }, React.createElement(Icon, { name: "x", size: 16 }))
+          ]),
+          React.createElement("div", { className: "tp-dialog-body" }, [
+            React.createElement("input", { className: "tp-input", placeholder: "任务标题（必填）", value: title, onChange: function (e) { setTitle(e.target.value); } }),
+            React.createElement("textarea", { className: "tp-textarea", rows: 2, placeholder: "需求描述（可选）", value: desc, onChange: function (e) { setDesc(e.target.value); } }),
+            React.createElement("textarea", { className: "tp-textarea", rows: 2, placeholder: "验收标准（可选）", value: acc, onChange: function (e) { setAcc(e.target.value); } }),
+            React.createElement("select", { className: "tp-input", value: repo, onChange: function (e) { setRepo(e.target.value); } }, [
+              React.createElement("option", { key: "auto", value: "" }, "目标仓库：自动识别（默认发布会话所在仓库）"),
+              repos.map(function (w) {
+                return React.createElement("option", { key: w.value, value: w.value }, w.label + " · " + w.value);
+              })
+            ]),
+            React.createElement("div", { className: "tp-toggle-row" }, [
+              React.createElement("label", null, [
+                React.createElement("input", { type: "checkbox", checked: autoRun, onChange: function (e) { setAutoRun(e.target.checked); } }),
+                "自动执行（插件领取并调度）"
+              ]),
+              React.createElement("label", null, [
+                React.createElement("input", { type: "checkbox", checked: autoConfirm, onChange: function (e) { setAutoConfirm(e.target.checked); } }),
+                "自动确认计划"
+              ])
+            ]),
+            React.createElement("div", { className: "tp-btn-row" }, [
+              React.createElement("button", { className: "tp-btn", onClick: scan, disabled: scanning }, [
+                scanning
+                  ? React.createElement(Icon, { name: "loader", size: 14, className: "tp-spin" })
+                  : React.createElement(Icon, { name: "search", size: 14 }),
+                React.createElement("span", null, scanning ? "扫描中…" : "扫描关联会话")
+              ])
+            ]),
+            hits.length > 0 ? React.createElement("div", { className: "tp-hits" }, [
+              React.createElement("div", { className: "tp-hits-title" }, "找到的相关历史会话（默认勾选前 3 个，可调整）"),
+              hits.map(function (h) {
+                return React.createElement("label", { key: h.id, className: "tp-hit" }, [
+                  React.createElement("input", { type: "checkbox", checked: !!selected[h.id], onChange: function (e) {
+                    var sel = Object.assign({}, selected);
+                    if (e.target.checked) sel[h.id] = true; else delete sel[h.id];
+                    setSelected(sel);
+                  } }),
+                  React.createElement("span", { className: "tp-hit-title" }, h.title),
+                  React.createElement("span", { className: "tp-hit-reason" }, h.reason)
+                ]);
+              })
+            ]) : null,
+            msg ? React.createElement("div", { className: "tp-msg" + (err ? " tp-err" : "") }, msg) : null
+          ]),
+          React.createElement("div", { className: "tp-dialog-actions" }, [
+            React.createElement("button", { className: "tp-btn", onClick: props.onClose, disabled: busy }, "取消"),
+            React.createElement("button", { className: "tp-btn tp-btn-primary", onClick: submit, disabled: busy || !title.trim() }, [
+              busy
+                ? React.createElement(Icon, { name: "loader", size: 14, className: "tp-spin" })
+                : React.createElement(Icon, { name: "send", size: 14 }),
+              React.createElement("span", null, busy ? "发布中…" : "发布任务")
             ])
+          ])
+        ])
+      ]);
+    }
+
+    // ---------- 组件：编辑弹窗（仅暂停中的任务） ----------
+    function EditDialog(props) {
+      var st = useStore();
+      var taskId = props.taskId;
+      var task = null;
+      for (var i = 0; i < st.tasks.length; i++) {
+        if (st.tasks[i].id === taskId) { task = st.tasks[i]; break; }
+      }
+      var stTitle = React.useState(task ? task.title : "");
+      var stDesc = React.useState(task ? (task.description || "") : "");
+      var stAcc = React.useState(task ? (task.acceptance || "") : "");
+      var stBusy = React.useState(false);
+      var stMsg = React.useState("");
+      var stErr = React.useState(false);
+      var title = stTitle[0], setTitle = stTitle[1];
+      var desc = stDesc[0], setDesc = stDesc[1];
+      var acc = stAcc[0], setAcc = stAcc[1];
+      var busy = stBusy[0], setBusy = stBusy[1];
+      var msg = stMsg[0], setMsg = stMsg[1];
+      var err = stErr[0], setErr = stErr[1];
+
+      function save() {
+        if (!title.trim()) { setErr(true); setMsg("任务标题不能为空"); return; }
+        setBusy(true); setErr(false); setMsg("");
+        var payload = { taskId: taskId, action: "edit", title: title, description: desc, acceptance: acc };
+        rpc("tasks-action", payload).then(function (r) {
+          if (r && r.ok) {
+            props.onClose();
+            refresh();
+          } else {
+            setErr(true); setMsg(r && r.error || "保存失败");
+          }
+        }).catch(function (e) { setErr(true); setMsg("保存失败: " + (e && e.message || e)); })
+          .finally(function () { setBusy(false); });
+      }
+
+      return React.createElement("div", { className: "tp-dialog-mask", onClick: props.onClose }, [
+        React.createElement("div", { className: "tp-dialog", onClick: function (e) { e.stopPropagation(); } }, [
+          React.createElement("div", { className: "tp-dialog-header" }, [
+            React.createElement("span", { className: "tp-dialog-title" }, [
+              React.createElement(Icon, { name: "edit", size: 15 }),
+              React.createElement("span", null, "重新编辑任务")
+            ]),
+            React.createElement("button", { className: "tp-icon-btn", title: "关闭", onClick: props.onClose }, React.createElement(Icon, { name: "x", size: 16 }))
           ]),
-          React.createElement("div", { className: "tp-btn-row" }, [
-            React.createElement("button", { className: "tp-btn", onClick: scan, disabled: scanning }, scanning ? "扫描中…" : "🔍 扫描关联会话"),
-            React.createElement("button", { className: "tp-btn tp-btn-primary", onClick: submit, disabled: busy }, busy ? "发布中…" : "🚀 发布任务")
+          React.createElement("div", { className: "tp-dialog-body" }, [
+            React.createElement("div", { className: "tp-msg" }, "编辑保存后将清空旧计划与产物，后续按新方向重新生成。"),
+            React.createElement("input", { className: "tp-input", placeholder: "任务标题（必填）", value: title, onChange: function (e) { setTitle(e.target.value); } }),
+            React.createElement("textarea", { className: "tp-textarea", rows: 3, placeholder: "需求描述（可选）", value: desc, onChange: function (e) { setDesc(e.target.value); } }),
+            React.createElement("textarea", { className: "tp-textarea", rows: 2, placeholder: "验收标准（可选）", value: acc, onChange: function (e) { setAcc(e.target.value); } }),
+            msg ? React.createElement("div", { className: "tp-msg" + (err ? " tp-err" : "") }, msg) : null
           ]),
-          hits.length > 0 ? React.createElement("div", { className: "tp-hits" }, [
-            React.createElement("div", { className: "tp-hits-title" }, "找到的相关历史会话（默认勾选前 3 个，可调整）"),
-            hits.map(function (h) {
-              return React.createElement("label", { key: h.id, className: "tp-hit" }, [
-                React.createElement("input", { type: "checkbox", checked: !!selected[h.id], onChange: function (e) {
-                  var sel = Object.assign({}, selected);
-                  if (e.target.checked) sel[h.id] = true; else delete sel[h.id];
-                  setSelected(sel);
-                } }),
-                React.createElement("span", { className: "tp-hit-title" }, h.title),
-                React.createElement("span", { className: "tp-hit-reason" }, h.reason)
-              ]);
-            })
-          ]) : null,
-          msg ? React.createElement("div", { className: "tp-msg" + (err ? " tp-err" : "") }, msg) : null
-        ]) : null
+          React.createElement("div", { className: "tp-dialog-actions" }, [
+            React.createElement("button", { className: "tp-btn", onClick: props.onClose, disabled: busy }, "取消"),
+            React.createElement("button", { className: "tp-btn tp-btn-primary", onClick: save, disabled: busy || !title.trim() }, [
+              busy
+                ? React.createElement(Icon, { name: "loader", size: 14, className: "tp-spin" })
+                : React.createElement(Icon, { name: "check", size: 14 }),
+              React.createElement("span", null, busy ? "保存中…" : "保存")
+            ])
+          ])
+        ])
       ]);
     }
 
     // ---------- 组件：任务卡片 ----------
     function TaskCard(props) {
+      var st = useStore();
       var task = props.task;
       var sid = props.sid;
       var stExpanded = React.useState(false);
@@ -365,38 +551,78 @@ window.__ModuleLoader__.load({
 
       var actions = [];
       if (task.status === "todo") {
-        actions.push({ label: "🚀 领取并规划", action: "claim", primary: true });
-        actions.push({ label: "🗑 删除", action: "delete" });
+        actions.push({ label: "领取并规划", icon: "rocket", action: "claim", primary: true });
+        actions.push({ label: "暂停", icon: "pause", action: "pause" });
+        actions.push({ label: "删除", icon: "trash", action: "delete" });
       } else if (task.status === "clarify") {
-        actions.push({ label: "✅ 提交澄清并定稿", action: "clarify-answer", primary: true });
-        actions.push({ label: "🗑 删除", action: "delete" });
+        actions.push({ label: "提交澄清并定稿", icon: "check", action: "clarify-answer", primary: true });
+        actions.push({ label: "暂停", icon: "pause", action: "pause" });
+        actions.push({ label: "删除", icon: "trash", action: "delete" });
       } else if (task.status === "confirm") {
-        actions.push({ label: "✅ 确认计划", action: "confirm", primary: true });
-        actions.push({ label: "↩️ 打回", action: "reject" });
+        actions.push({ label: "确认计划", icon: "check", action: "confirm", primary: true });
+        actions.push({ label: "打回", icon: "rotate-ccw", action: "reject" });
+        actions.push({ label: "暂停", icon: "pause", action: "pause" });
       } else if (task.status === "develop") {
-        actions.push({ label: "🔄 重新执行", action: "rerun" });
+        actions.push({ label: "暂停", icon: "pause", action: "pause" });
+        actions.push({ label: "重新执行", icon: "refresh-cw", action: "rerun" });
       } else if (task.status === "review") {
-        actions.push({ label: "✅ 验收通过", action: "accept", primary: true });
-        actions.push({ label: "↩️ 打回开发", action: "reopen" });
-        actions.push({ label: "🔄 重新复核", action: "rerun" });
+        actions.push({ label: "验收通过", icon: "check-circle", action: "accept", primary: true });
+        actions.push({ label: "打回开发", icon: "rotate-ccw", action: "reopen" });
+        actions.push({ label: "重新复核", icon: "refresh-cw", action: "rerun" });
+        actions.push({ label: "暂停", icon: "pause", action: "pause" });
       } else if (task.status === "done") {
-        actions.push({ label: "↩️ 重新打开", action: "reopen" });
+        actions.push({ label: "重新打开", icon: "rotate-ccw", action: "reopen" });
+      } else if (task.status === "paused") {
+        actions.push({ label: "继续执行", icon: "play", action: "resume", primary: true });
+        actions.push({ label: "重新编辑", icon: "edit", action: "edit-open" });
+        actions.push({ label: "删除", icon: "trash", action: "delete" });
       }
       var needNote = task.status === "confirm" || task.status === "review" || task.status === "done";
+      var runningText = task.status === "todo" ? "规划中…" : task.status === "develop" ? "执行中…" : task.status === "review" ? "复核中…" : "处理中…";
 
       return React.createElement("div", { className: "tp-card", onClick: function () { setExpanded(!expanded); } }, [
         React.createElement("div", { className: "tp-card-row" }, [
           React.createElement("span", { className: "tp-dot", style: { background: task.color || "#94a3b8" } }),
           React.createElement("span", { className: "tp-card-title" }, task.title),
           React.createElement("span", { className: "tp-card-status" }, task.statusLabel),
-          React.createElement("span", null, expanded ? "▴" : "▾")
+          React.createElement("span", { className: "tp-chev" + (expanded ? " tp-chev-open" : "") }, React.createElement(Icon, { name: "chevron-down", size: 16 }))
         ]),
         React.createElement("div", { className: "tp-card-meta" }, [
-          task.running ? React.createElement("span", { className: "tp-running" }, "⏳ " + (task.status === "todo" ? "规划中…" : task.status === "develop" ? "执行中…" : "处理中…")) : null,
-          React.createElement("span", null, "更新于 " + relTime(task.updatedAt)),
-          task.repoPath ? React.createElement("span", null, "仓库 " + task.repoPath) : null,
-          task.sourceSessionId ? React.createElement("span", null, "来源会话 " + String(task.sourceSessionId).slice(0, 12) + "…") : null,
-          (task.relatedSessions || []).length > 0 ? React.createElement("span", null, "关联 " + task.relatedSessions.length + " 个会话") : null
+          task.running ? React.createElement("span", { className: "tp-running" }, [
+            React.createElement(Icon, { name: "loader", size: 12, className: "tp-spin" }),
+            React.createElement("span", null, runningText)
+          ]) : null,
+          task.status === "paused" && task.pausedFrom
+            ? React.createElement("span", null, "已暂停（来自 " + ((st.labels && st.labels[task.pausedFrom]) || task.pausedFrom) + "）")
+            : null,
+          React.createElement("span", null, [
+            React.createElement(Icon, { name: "clock", size: 12, className: "tp-meta-ic" }),
+            " 更新于 " + relTime(task.updatedAt)
+          ]),
+          task.repoPath ? React.createElement("span", null, [
+            React.createElement(Icon, { name: "folder", size: 12, className: "tp-meta-ic" }),
+            " 仓库 " + task.repoPath
+          ]) : null,
+          task.sourceSessionId ? React.createElement("span", {
+            title: "跳转到发布会话（" + task.sourceSessionId + "）",
+            style: { cursor: "pointer", color: "var(--tp-accent,#3b82f6)" },
+            onClick: function (e) { e.stopPropagation(); openSession(task.sourceSessionId); }
+          }, [
+            React.createElement(Icon, { name: "link", size: 12, className: "tp-meta-ic" }),
+            " 发布会话 " + String(task.sourceSessionId).slice(0, 10) + "…"
+          ]) : null,
+          task.workSessionId ? React.createElement("span", {
+            title: "跳转到执行子会话（" + task.workSessionId + "）",
+            style: { cursor: "pointer", color: "var(--tp-accent,#3b82f6)" },
+            onClick: function (e) { e.stopPropagation(); openChildSession(task.workSessionId); }
+          }, [
+            React.createElement(Icon, { name: "message-square", size: 12, className: "tp-meta-ic" }),
+            " 执行会话 " + String(task.workSessionId).slice(0, 10) + "…"
+          ]) : null,
+          (task.relatedSessions || []).length > 0 ? React.createElement("span", null, [
+            React.createElement(Icon, { name: "message-square", size: 12, className: "tp-meta-ic" }),
+            " 关联 " + task.relatedSessions.length + " 个会话"
+          ]) : null
         ]),
         expanded ? React.createElement("div", { className: "tp-card-body" }, [
           task.description ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "需求")), task.description]) : null,
@@ -415,7 +641,7 @@ window.__ModuleLoader__.load({
           (task.questions || []).length > 0 && task.status !== "clarify" ? React.createElement("div", { className: "tp-sec" }, [
             React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "澄清问答")),
             task.questions.map(function (q) {
-              return React.createElement("div", { key: q.id }, "Q" + q.id.slice(1) + ". " + q.q + " → " + (q.answer || "（未回答）"));
+              return React.createElement("div", { key: q.id }, "Q" + q.id.slice(1) + ". " + q.q + "：" + (q.answer || "（未回答）"));
             })
           ]) : null,
           task.specPath ? React.createElement("div", { className: "tp-sec" }, [
@@ -425,21 +651,40 @@ window.__ModuleLoader__.load({
           task.summary ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "实现摘要")), task.summary]) : null,
           task.reviewReport ? React.createElement("div", { className: "tp-sec" }, [
             React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "复核报告")),
-            "结论：" + (task.reviewReport.passed ? "✅ 通过" : "❌ 未通过") + (task.reviewReport.verdict ? "（" + task.reviewReport.verdict + "）" : ""),
-            (task.reviewReport.issues || []).length > 0 ? "；问题：" + task.reviewReport.issues.join("；") : ""
+            React.createElement("div", { className: "tp-kv-line" }, [
+              task.reviewReport.passed
+                ? React.createElement(Icon, { name: "check-circle", size: 14, className: "tp-ok" })
+                : React.createElement(Icon, { name: "x-circle", size: 14, className: "tp-bad" }),
+              React.createElement("span", null, " " + (task.reviewReport.passed ? "通过" : "未通过") + (task.reviewReport.verdict ? "（" + task.reviewReport.verdict + "）" : "")),
+              (task.reviewReport.issues || []).length > 0
+                ? React.createElement("span", null, "；问题：" + task.reviewReport.issues.join("；"))
+                : null
+            ])
           ]) : null,
-          (task.relatedSessions || []).length > 0 ? React.createElement("div", { className: "tp-kv" }, [
-            React.createElement("b", null, "关联会话"),
-            task.relatedSessions.map(function (r) {
-              return React.createElement("span", { key: r.id, className: "tp-sess", title: r.reason, onClick: function (e) {
-                e.stopPropagation();
-                if (exports.sessionOpen) exports.sessionOpen(r.id);
-              } }, [
-                React.createElement("span", { className: "tp-dot", style: { background: "#64748b" } }),
-                React.createElement("span", { className: "tp-sess-t" }, r.title)
-              ]);
-            })
-          ]) : null,
+          (function () {
+            var ss = task.stageSessions || {};
+            var items = [];
+            if (task.sourceSessionId) items.push({ id: task.sourceSessionId, label: "发布会话", color: "#3b82f6", child: false, title: "跳转到发布会话（" + task.sourceSessionId + "）" });
+            if (ss.claim && ss.claim.id) items.push({ id: ss.claim.id, label: "规划会话", color: "#94a3b8", child: true, title: "跳转到规划子会话（" + ss.claim.id + "）" });
+            if (ss.develop && ss.develop.id) items.push({ id: ss.develop.id, label: "开发会话", color: "#3b82f6", child: true, title: "跳转到开发子会话（" + ss.develop.id + "）" });
+            if (ss.review && ss.review.id) items.push({ id: ss.review.id, label: "复核会话", color: "#8b5cf6", child: true, title: "跳转到复核子会话（" + ss.review.id + "）" });
+            (task.relatedSessions || []).forEach(function (r) {
+              items.push({ id: r.id, label: r.title || "(无标题会话)", color: "#64748b", child: false, title: r.reason || ("跳转到关联会话（" + r.id + "）") });
+            });
+            if (items.length === 0) return null;
+            return React.createElement("div", { className: "tp-kv" }, [
+              React.createElement("b", null, "会话（点击跳转）"),
+              items.map(function (it) {
+                return React.createElement("span", { key: it.id + it.label, className: "tp-sess", title: it.title, onClick: function (e) {
+                  e.stopPropagation();
+                  if (it.child) openChildSession(it.id); else openSession(it.id);
+                } }, [
+                  React.createElement("span", { className: "tp-dot", style: { background: it.color } }),
+                  React.createElement("span", { className: "tp-sess-t" }, it.label)
+                ]);
+              })
+            ]);
+          })(),
           (task.history || []).length > 0 ? React.createElement("div", { className: "tp-hist" }, [
             React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "时间线")),
             task.history.map(function (h, i) {
@@ -452,15 +697,19 @@ window.__ModuleLoader__.load({
           actions.length > 0 ? React.createElement("div", { className: "tp-actions", onClick: function (e) { e.stopPropagation(); } }, [
             needNote ? React.createElement("input", { className: "tp-input", style: { flex: 1, minWidth: 120 }, placeholder: "打回/反馈附言（可选）", value: note, onChange: function (e) { setNote(e.target.value); } }) : null,
             actions.map(function (btn) {
-              return React.createElement("button", {
+              return React.createElement(ActionButton, {
                 key: btn.action,
-                className: "tp-btn" + (btn.primary ? " tp-btn-primary" : ""),
-                disabled: busy === btn.action,
+                icon: btn.icon,
+                label: btn.label,
+                primary: btn.primary,
+                busy: busy === btn.action,
+                title: btn.label,
                 onClick: function () {
                   if (btn.action === "clarify-answer") submitAnswers();
+                  else if (btn.action === "edit-open") openModal({ kind: "edit", taskId: task.id });
                   else act(btn.action);
                 }
-              }, busy === btn.action ? "处理中…" : btn.label);
+              });
             })
           ]) : null,
           err ? React.createElement("div", { className: "tp-msg tp-err" }, err) : null
@@ -481,26 +730,38 @@ window.__ModuleLoader__.load({
         }
         return [];
       })();
-      var badge = (st.counts.todo || 0) + (st.counts.clarify || 0) + (st.counts.confirm || 0) + (st.counts.review || 0);
-      // 面板默认收起：open=false 时不渲染遮罩/抽屉（✕ 按钮与背景遮罩的 closePanel 因此真正生效）。
-      // Esc 监听：面板打开时按下 Escape 即收起；清理函数避免重复监听。置于条件 return 之前遵守 hooks 规则。
+      var badge = (st.counts.todo || 0) + (st.counts.clarify || 0) + (st.counts.confirm || 0) + (st.counts.review || 0) + (st.counts.paused || 0);
+      // 面板默认收起：open=false 时不渲染遮罩/抽屉（关闭按钮与背景遮罩的 closePanel 因此真正生效）。
+      // Esc 监听：弹窗打开时先关弹窗，再关面板。置于条件 return 之前遵守 hooks 规则。
       React.useEffect(function () {
         function onKeyDown(e) {
-          if (e.key === "Escape" && st.open) closePanel();
+          if (e.key !== "Escape") return;
+          if (store.modal) { closeModal(); return; }
+          if (store.open) closePanel();
         }
         window.addEventListener("keydown", onKeyDown);
         return function () { window.removeEventListener("keydown", onKeyDown); };
       }, []);
       if (!st.open) return null;
+      var dialog = null;
+      if (st.modal && st.modal.kind === "publish") {
+        dialog = React.createElement(PublishDialog, { key: "publish", sid: sid, repos: repos, onClose: closeModal });
+      } else if (st.modal && st.modal.kind === "edit") {
+        dialog = React.createElement(EditDialog, { key: "edit", taskId: st.modal.taskId, onClose: closeModal });
+      }
       return React.createElement("div", { className: "tp-wrap" }, [
         React.createElement("div", { className: "tp-backdrop", onClick: closePanel }),
         React.createElement("div", { className: "tp-drawer", style: { width: st.width + "px" } }, [
           React.createElement("div", { className: "tp-resize", title: "拖拽调整宽度", onPointerDown: onDragStart }),
           React.createElement("div", { className: "tp-header" }, [
-            React.createElement("span", { className: "tp-header-title" }, "📋 任务面板" + (badge > 0 ? "（" + badge + " 件待处理）" : "") + (st.persistenceOk === false ? " ⚠️" : "")),
+            React.createElement("span", { className: "tp-header-title" }, [
+              React.createElement(Icon, { name: "clipboard", size: 16 }),
+              React.createElement("span", null, "任务面板" + (badge > 0 ? "（" + badge + " 件待处理）" : "")),
+              st.persistenceOk === false ? React.createElement(Icon, { name: "alert-triangle", size: 14, className: "tp-warn" }) : null
+            ]),
             React.createElement("div", { className: "tp-header-actions" }, [
-              React.createElement("button", { className: "tp-icon-btn", title: "刷新", onClick: refresh }, "🔄"),
-              React.createElement("button", { className: "tp-icon-btn", title: "关闭面板", onClick: closePanel }, "✕")
+              React.createElement("button", { className: "tp-icon-btn", title: "刷新", onClick: refresh }, React.createElement(Icon, { name: "refresh-cw", size: 15 })),
+              React.createElement("button", { className: "tp-icon-btn", title: "关闭面板", onClick: closePanel }, React.createElement(Icon, { name: "x", size: 16 }))
             ])
           ]),
           React.createElement("div", { className: "tp-counts-row" }, [
@@ -512,7 +773,10 @@ window.__ModuleLoader__.load({
             })
           ]),
           React.createElement("div", { className: "tp-body" }, [
-            React.createElement(PublishBox, { key: "pb", sid: sid, repos: repos }),
+            React.createElement("button", { className: "tp-pub-btn", onClick: function () { openModal({ kind: "publish" }); } }, [
+              React.createElement(Icon, { name: "plus", size: 16 }),
+              React.createElement("span", null, "发布新任务")
+            ]),
             React.createElement("div", { className: "tp-tabs" }, [
               st.order.map(function (s) {
                 return React.createElement("button", {
@@ -536,26 +800,24 @@ window.__ModuleLoader__.load({
             ])
           ]),
           React.createElement("div", { className: "tp-footer" }, st.persistenceOk === false
-            ? "⚠️ 数据保存失败（tasks.json 写入被拒），任务在重启后会丢失 —— 请检查沙箱策略"
-            : "发布时可指定目标仓库 · 拖拽左边缘调宽度 · 阶段自动流转：领取 → 规划 → 开发 → 复核 → 待你验收")
-        ])
+            ? [React.createElement(Icon, { name: "alert-triangle", size: 12, className: "tp-warn" }), " 数据保存失败（tasks.json 写入被拒），任务在重启后会丢失 —— 请检查沙箱策略"]
+            : "发布时可指定目标仓库 · 拖拽左边缘调宽度 · 阶段自动流转：领取、规划、开发、复核、待你验收 · 随时可暂停")
+        ]),
+        dialog
       ]);
     }
 
     // ---------- 组件：侧边栏按钮 ----------
     function SidebarButton(props) {
       var st = useStore();
-      var badge = (st.counts.todo || 0) + (st.counts.clarify || 0) + (st.counts.confirm || 0) + (st.counts.review || 0);
+      var badge = (st.counts.todo || 0) + (st.counts.clarify || 0) + (st.counts.confirm || 0) + (st.counts.review || 0) + (st.counts.paused || 0);
       return React.createElement("button", {
         className: "tp-side-btn" + (props.wide ? "" : " tp-side-rail") + (st.open ? " tp-side-active" : ""),
         title: "任务面板" + (badge > 0 ? "（" + badge + " 件待处理）" : ""),
         onClick: function () { setStore({ open: !st.open }); }
       }, [
         React.createElement("span", { className: "tp-side-ic" }, [
-          React.createElement("svg", { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" }, [
-            React.createElement("rect", { x: 3, y: 4, width: 18, height: 16, rx: 3 }),
-            React.createElement("path", { d: "M8 8.5 L10 10.5 L16 6" })
-          ])
+          React.createElement(Icon, { name: "clipboard", size: 16 })
         ]),
         props.wide ? React.createElement("span", { className: "tp-side-label" }, "任务面板") : null,
         badge > 0 ? React.createElement("span", { className: "tp-side-badge" }, badge > 99 ? "99+" : badge) : null
@@ -569,6 +831,12 @@ window.__ModuleLoader__.load({
       setInterval(refresh, 8000);
       exports.sessionOpen = (ctx.sessions && typeof ctx.sessions.open === "function")
         ? function (id) { ctx.sessions.open(id); }
+        : undefined;
+      exports.sessionOpenSubagent = (ctx.sessions && typeof ctx.sessions.openSubagent === "function")
+        ? function (addr) { ctx.sessions.openSubagent(addr); }
+        : undefined;
+      exports.sessionAddress = (ctx.sessions && typeof ctx.sessions.subagentAddress === "function")
+        ? function (id) { return ctx.sessions.subagentAddress(id); }
         : undefined;
 
       ctx.slots.inject("sidebar.footer.action", function () {

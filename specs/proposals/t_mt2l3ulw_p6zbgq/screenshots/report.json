@@ -1,0 +1,97 @@
+{
+  "sidebarSvg": {
+    "hasSvg": true,
+    "label": "任务面板",
+    "emojiInLabel": false,
+    "svgViewBox": "0 0 24 24"
+  },
+  "panel": {
+    "tabs": [
+      "待领取0",
+      "待澄清0",
+      "待确认0",
+      "开发中1",
+      "暂停中0",
+      "复核中0",
+      "已完成2"
+    ],
+    "tabCount": 7,
+    "pubLabel": "发布新任务",
+    "pubSvg": true,
+    "svgCount": 4,
+    "emojiBtns": [],
+    "countsRow": [
+      "待领取 0",
+      "待澄清 0",
+      "待确认 0",
+      "开发中 1",
+      "暂停中 0",
+      "复核中 0",
+      "已完成 2"
+    ]
+  },
+  "dialog": {
+    "hasMask": true,
+    "fieldCount": 4,
+    "toggleCount": 2,
+    "actions": [
+      "取消",
+      "发布任务"
+    ],
+    "closeBtn": true,
+    "svgCount": 4,
+    "title": "发布新任务"
+  },
+  "escClosed": true,
+  "panelStillOpenAfterEsc": true,
+  "publishAutoClosed": true,
+  "card": {
+    "title": "UI 验收演示：图标化+弹窗发布+暂停编辑",
+    "statusLabel": "待领取",
+    "chevronSvg": true,
+    "dotColor": "rgb(148, 163, 184)",
+    "metaIcons": 3
+  },
+  "cardActions": [
+    {
+      "label": "领取并规划",
+      "svg": true,
+      "title": "领取并规划"
+    },
+    {
+      "label": "暂停",
+      "svg": true,
+      "title": "暂停"
+    },
+    {
+      "label": "删除",
+      "svg": true,
+      "title": "删除"
+    }
+  ],
+  "pausedView": {
+    "statusLabel": "暂停中",
+    "pausedFromText": true,
+    "actions": [
+      "继续执行",
+      "重新编辑",
+      "删除"
+    ]
+  },
+  "editDialog": {
+    "title": "重新编辑任务",
+    "fields": 3,
+    "note": "编辑保存后将清空旧计划与产物，后续按新方向重新生成。",
+    "actions": [
+      "取消",
+      "保存"
+    ],
+    "svgCount": 3
+  },
+  "resumedStatus": "todo",
+  "darkTheme": {
+    "bg": "#111827",
+    "iconStrokeUsesCurrentColor": false
+  },
+  "cleanup": true
+}
