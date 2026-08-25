@@ -1,5 +1,7 @@
 # 老板任务面板 (Boss Task Panel)
 
+[![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+
 一个运行在 DeepSeek Harness (DSH) 里的任务面板插件：把「聊天气泡」升级成「任务流水线」。
 
 - **老板角色**：你只负责两件事 —— **发布任务** 和 **验收结果**。
