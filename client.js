@@ -133,11 +133,11 @@ window.__ModuleLoader__.load({
       ".tp-shot img{width:100%;height:110px;object-fit:cover;display:block}",
       ".tp-shot-cap{font-size:10px;color:var(--tp-dim,#64748b);padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
       // —— 验收截图弹窗预览（当前页内，不开新 tab）——
-      ".tp-shot-mask{position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:20px}",
-      ".tp-shot-modal{background:var(--tp-bg,#ffffff);color:var(--tp-fg,#1e293b);border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);width:min(1000px,92vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}",
-      ".tp-shot-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid rgba(127,127,127,.2)}",
+      ".tp-shot-mask{position:absolute;left:0;top:0;bottom:0;right:0;z-index:30;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:14px;min-width:0}",
+      ".tp-shot-modal{background:var(--tp-bg,#ffffff);color:var(--tp-fg,#1e293b);border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);width:100%;height:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0}",
+      ".tp-shot-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid rgba(127,127,127,.2);flex-shrink:0}",
       ".tp-shot-title{font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px}",
-      ".tp-shot-body{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:rgba(127,127,127,.06);padding:12px}",
+      ".tp-shot-body{flex:1;min-height:0;min-width:0;overflow:auto;display:flex;align-items:center;justify-content:center;background:rgba(127,127,127,.06);padding:12px}",
       ".tp-shot-body img{max-width:100%;max-height:100%;object-fit:contain;display:block;border-radius:6px}",
       ".tp-shot-desc{font-size:11px;color:var(--tp-dim,#64748b);padding:8px 16px;border-top:1px solid rgba(127,127,127,.2);white-space:pre-wrap;word-break:break-word}",
       ".tp-btn:focus-visible,.tp-icon-btn:focus-visible,.tp-tab:focus-visible,.tp-side-btn:focus-visible,.tp-pub-btn:focus-visible{outline:2px solid var(--tp-accent,#3b82f6);outline-offset:1px}",
@@ -545,7 +545,17 @@ window.__ModuleLoader__.load({
     function ShotDialog(props) {
       var url = props.url;
       var caption = props.caption || props.name || "验收截图";
-      return React.createElement("div", { className: "tp-shot-mask", onClick: props.onClose }, [
+      // 预览只撑满「抽屉左侧」区域，避免被右侧抽屉遮挡。
+      // right = 抽屉宽度（含 max-width:94vw 钳制），保证预览与抽屉互不重叠。
+      var drawerW = props.drawerWidth || 0;
+      var rightPx = (typeof window !== "undefined")
+        ? Math.min(drawerW, Math.floor((window.innerWidth || 0) * 0.94))
+        : drawerW;
+      return React.createElement("div", {
+        className: "tp-shot-mask",
+        style: { right: rightPx + "px" },
+        onClick: props.onClose
+      }, [
         React.createElement("div", { className: "tp-shot-modal", onClick: function (e) { e.stopPropagation(); } }, [
           React.createElement("div", { className: "tp-shot-head" }, [
             React.createElement("span", { className: "tp-shot-title" }, [
@@ -915,7 +925,7 @@ window.__ModuleLoader__.load({
       } else if (st.modal && st.modal.kind === "edit") {
         dialog = React.createElement(EditDialog, { key: "edit", taskId: st.modal.taskId, onClose: closeModal });
       } else if (st.modal && st.modal.kind === "shot") {
-        dialog = React.createElement(ShotDialog, { key: "shot", url: st.modal.url, caption: st.modal.caption, name: st.modal.name, desc: st.modal.desc, onClose: closeModal });
+        dialog = React.createElement(ShotDialog, { key: "shot", url: st.modal.url, caption: st.modal.caption, name: st.modal.name, desc: st.modal.desc, drawerWidth: st.width, onClose: closeModal });
       }
       return React.createElement("div", { className: "tp-wrap" }, [
         React.createElement("div", { className: "tp-backdrop", onClick: closePanel }),
