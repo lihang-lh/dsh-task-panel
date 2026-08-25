@@ -2,8 +2,12 @@
 // dsh-task-panel · Host 入口（静态插件形态）
 // 运行环境：DSH host 进程（Node ESM）
 // 依赖服务：fs / sessionQuery / subagents / agents / timer / webServer
-// 客户端通过 HTTP 路由 /dsh-task-panel/api/* 与 Host 通信
+// 客户端通过 HTTP 路由 /dsh-task-panel/api/* 与 Host 通信；
+// 截图/产物通过 /dsh-task-panel/files/<taskId>/<name> 静态下发。
 // =============================================================
+
+import { copyFile, mkdir, readFile } from 'node:fs/promises'
+import { join as pathJoin, sep as pathSep } from 'node:path'
 
 export const name = 'dsh-task-panel'
 export const inject = ['timer', 'webServer']
@@ -27,6 +31,10 @@ export async function apply(ctx) {
   const STAGE_LABEL = { claim: '规划', refine: '澄清定稿', develop: '开发', review: '复核' }
   const STATUS_ORDER = [STATUS.TODO, STATUS.CLARIFY, STATUS.CONFIRM, STATUS.DEVELOP, STATUS.PAUSED, STATUS.REVIEW, STATUS.DONE]
   const MAX_CONCURRENT_DEVELOP = 1
+  // 复核未通过时的自动打回开发轮次上限：超过后任务停在「复核中」并点亮红色「不可验收」提示，由老板决定。
+  const MAX_REWORK = 3
+  // 复核报告里「通过」的硬门槛：不允许「通过但带遗留问题」。
+  const reviewClean = (report) => !!report && report.passed === true && Array.isArray(report.issues) && report.issues.length === 0
 
   // fs.writeText 需要显式沙箱策略：默认按 workspace-write 裁定（workspaceRoot=进程 cwd），
   // 进程 cwd 不在项目目录时写入会被拒绝。这里显式限定在项目目录内写；/tmp 始终可写，作为回退。
@@ -61,6 +69,7 @@ export async function apply(ctx) {
         done: { type: 'boolean' },
         summary: { type: 'string' },
         changedFiles: { type: 'array', items: { type: 'string' } },
+        screenshots: { type: 'array', items: { type: 'string' } },
         blocker: { type: 'string' },
       },
       required: ['done'],
@@ -72,6 +81,7 @@ export async function apply(ctx) {
         passed: { type: 'boolean' },
         issues: { type: 'array', items: { type: 'string' } },
         verdict: { type: 'string' },
+        screenshots: { type: 'array', items: { type: 'string' } },
       },
       required: ['passed'],
       additionalProperties: true,
@@ -289,20 +299,40 @@ export async function apply(ctx) {
       return s
     }
     if (stage === 'develop') {
-      return base
+      let s = base
         + '\n\n## 老板已确认的实施计划\n' + (task.plan || '（无，请自行规划后实施）')
         + (task.specPath ? '\n\n## OpenSpec 任务清单（按编号任务逐步实施；每完成一项，把 tasks.md 中该项的 `[ ]` 改为 `[x]`）\n' + task.specPath : '')
-        + '\n\n你的角色：开发执行代理。'
+      const feedback = (task.flags && task.flags.reworkFeedback) || []
+      if (feedback.length > 0) {
+        s += '\n\n## ⚠️ 上一轮复核未通过的问题清单（必须逐条修复，缺一不可）\n'
+          + feedback.map((f, i) => (i + 1) + '. ' + f).join('\n')
+          + '\n请在 summary 中逐条说明：修复方式 + 验证证据（实际跑过的命令与结果）。'
+      }
+      s += '\n\n你的角色：开发执行代理。'
         + '\n请严格按照计划实施本任务，完成代码/文档/配置改动并自测：能跑的命令要实际跑并记录结果（退出码/输出），改 UI 要给出可验证的证据。'
-        + '\n以 JSON 输出：done（boolean 是否完成）、summary（完成情况摘要）、changedFiles（改动文件数组）、blocker（未完成时的阻塞原因，否则空字符串）。'
+        + '\n【端到端与截图要求】涉及 UI / 页面 / 表单 / 交互的任务，必须启动本地环境做端到端验证（真实浏览器或 Playwright），'
+        + '并把关键界面的截图保存到 <目标仓库>/specs/proposals/<任务id>/screenshots/ 目录（PNG/JPEG），'
+        + '然后在输出的 screenshots 数组中给出截图路径（绝对路径或仓库内相对路径，每张一行，附简短说明请在 summary 中写清）。'
+        + '纯后端/测试任务可跳过截图，但必须在 summary 中说明原因。'
+        + '\n以 JSON 输出：done（boolean 是否完成）、summary（完成情况摘要）、changedFiles（改动文件数组）、screenshots（截图路径数组）、blocker（未完成时的阻塞原因，否则空字符串）。'
+      return s
     }
     if (stage === 'review') {
       return base
         + '\n\n## 实现摘要\n' + (task.summary || '（见执行子会话）')
         + (task.specPath ? '\n\n## OpenSpec 任务清单（请逐项核对实现是否真正完成：对照 tasks.md 勾选状态与实际代码/产物）\n' + task.specPath : '')
-        + '\n\n你的角色：质量复核代理（老板验收前的自动检查）。'
-        + '\n请对照验收标准与任务清单复核实现：需求是否满足、每项任务是否完成、代码质量、遗留问题与明显缺陷。'
-        + '\n以 JSON 输出：passed（boolean 是否通过）、issues（问题数组）、verdict（复核结论）。'
+        + '\n\n你的角色：质量复核代理（老板验收前的最后一道关卡）。'
+        + '\n请对照验收标准、任务清单与真实运行结果逐项核对，不能只凭代码阅读或代理自述下结论：'
+        + '\n1. 【必须实际运行】跑测试并核对结果（pytest / node --test / playwright 等），在 verdict 中写明跑了哪些命令与结果；'
+        + '\n2. 【端到端】涉及 UI / 页面 / 表单 / 交互的任务，必须核对端到端（Playwright 或真实浏览器流程）确实执行过、截图真实存在且内容与实现一致；'
+        + '\n3. 逐条核对 tasks.md 勾选状态与真实实现是否一致，勾了但未实现的必须记为问题；'
+        + '\n4. 检查是否有未完成功能、生产接线缺失、安全/权限/审计缺口。'
+        + '\n【通过硬门槛（必须同时满足，否则 passed=false）】'
+        + '\n- 验收标准全部满足；tasks.md 全部勾选且与实际一致；'
+        + '\n- issues 必须为空数组——任何遗留问题（无论多小）都必须写进 issues 并使 passed=false；'
+        + '\n- 有实际运行测试/端到端的证据；UI/表单类任务必须提供真实截图（screenshots 数组非空）。'
+        + '\n【禁止】输出「通过但带遗留问题」这类自相矛盾的结论：有遗留问题就是未通过（passed=false），由面板自动打回开发。'
+        + '\n以 JSON 输出：passed（boolean）、issues（问题数组，无问题必须为空数组）、verdict（复核结论：通过则写清测试与证据；不通过则说明主要原因）、screenshots（截图路径数组，无则空数组）。'
     }
     return base
   }
@@ -549,6 +579,8 @@ export async function apply(ctx) {
       const s = res.structured || {}
       if (typeof s.summary === 'string' && s.summary) task.summary = s.summary
       task.changedFiles = Array.isArray(s.changedFiles) ? s.changedFiles : []
+      const shots = await collectScreenshots(task, s.screenshots)
+      if (shots.length > 0) task.screenshots = Array.isArray(task.screenshots) ? task.screenshots.concat(shots) : shots
       if (s.done === true) {
         move(task, STATUS.REVIEW, '开发完成，进入自动复核')
         await saveState()
@@ -570,21 +602,83 @@ export async function apply(ctx) {
     const res = await runStage(task, 'review')
     if (!res || task.status === STATUS.PAUSED) return // 暂停守卫：中止/暂停后不再继续
     const s = res.structured || {}
+    const issues = Array.isArray(s.issues) ? s.issues : []
+    const shots = await collectScreenshots(task, s.screenshots)
+    // 硬门槛：有任何遗留问题即视为未通过（不允许「通过但带遗留问题」进入待验收）
+    const passed = s.passed === true && issues.length === 0
     task.reviewReport = {
-      passed: s.passed === true,
-      issues: Array.isArray(s.issues) ? s.issues : [],
+      passed: passed,
+      issues: issues,
       verdict: typeof s.verdict === 'string' ? s.verdict : '',
+      screenshots: shots,
       at: now(),
     }
-    if (s.passed === true) {
-      note(task, '自动复核通过：' + (s.verdict || '无遗留问题') + ' —— 等待老板验收')
-    } else {
-      note(task, '自动复核发现问题（' + task.reviewReport.issues.length + ' 项）：' + (s.verdict || '详见复核报告') + ' —— 等待老板决定')
+    if (shots.length > 0) task.screenshots = Array.isArray(task.screenshots) ? task.screenshots.concat(shots) : shots
+    if (passed) {
+      note(task, '自动复核通过（无遗留问题）：' + (s.verdict || '测试与验收标准均已核对') + ' —— 等待老板验收')
+      await saveState()
+      return
     }
+    // 未通过：自动打回开发（带问题清单），轮次受限防止无限循环
+    task.flags.reworkCount = (task.flags.reworkCount || 0) + 1
+    if (task.flags.reworkCount <= MAX_REWORK) {
+      task.flags.reworkFeedback = issues
+      note(task, '自动复核未通过（' + issues.length + ' 项问题），自动打回开发重试（第 ' + task.flags.reworkCount + '/' + MAX_REWORK + ' 轮）：' + (s.verdict || '详见复核报告'))
+      move(task, STATUS.DEVELOP, '复核未通过，自动打回开发（第 ' + task.flags.reworkCount + '/' + MAX_REWORK + ' 轮）')
+      await saveState()
+      kick(function () { return runDevelop(task) })
+      return
+    }
+    note(task, '自动复核仍未通过（已重试 ' + MAX_REWORK + ' 轮，仍有 ' + issues.length + ' 项问题），停在复核中：请老板在面板决定「打回开发 / 重新复核 / 验收通过」')
     await saveState()
   }
 
+  // 收集开发/复核代理产出的截图：拷贝到面板 screenshots/<taskId>/ 目录，供 /files 路由静态下发
+  async function collectScreenshots(task, raw) {
+    const out = []
+    const list = Array.isArray(raw) ? raw : []
+    for (const item of list) {
+      let p = ''
+      if (typeof item === 'string') p = item
+      else if (item && typeof item.path === 'string') p = item.path
+      p = String(p || '').trim()
+      if (!p) continue
+      try {
+        const source = await fs.resolve(p, { cwd: task.repoPath || PROJECT_DIR })
+        if (source === null) continue
+        const info = await fs.stat(source)
+        if (!info || info.type !== 'file' || !info.size || info.size <= 0 || info.size > 10 * 1024 * 1024) continue
+        const name = String(p).split(/[\\/]/).pop().replace(/[^\w.\-]/g, '_')
+        if (!name) continue
+        const dir = pathJoin(PROJECT_DIR, 'screenshots', task.id)
+        await mkdir(dir, { recursive: true })
+        const dest = pathJoin(dir, name)
+        await copyFile(source.targetKey, dest)
+        out.push({ name: name, url: '/dsh-task-panel/files/' + task.id + '/' + encodeURIComponent(name), caption: (typeof item === 'object' && item.caption) ? String(item.caption) : name })
+      } catch (err) {
+        console.error('[task-panel] 截图收集失败:', p, err && err.message || err)
+      }
+    }
+    return out
+  }
+
   // ---------- 摘要（JSON 安全） ----------
+  // 读取 OpenSpec tasks.md 的勾选进度：{checked, total}；读不到返回 null
+  async function tasksProgressOf(t) {
+    if (!t.specPath) return null
+    try {
+      const target = await fs.resolve(t.specPath)
+      if (target === null) return null
+      const text = await fs.readText(target)
+      const checked = (text.match(/- \[x\]/g) || []).length
+      const total = (text.match(/- \[[ x]\]/g) || []).length
+      if (total === 0) return null
+      return { checked: checked, total: total }
+    } catch (err) {
+      return null
+    }
+  }
+
   function toSummary(t) {
     return {
       id: t.id,
@@ -605,7 +699,11 @@ export async function apply(ctx) {
       specInRepo: !!t.specInRepo,
       summary: t.summary || '',
       changedFiles: t.changedFiles || [],
+      screenshots: (t.screenshots || []).map((s) => ({ name: s.name || '', url: s.url || '', caption: s.caption || s.name || '' })),
       reviewReport: t.reviewReport || null,
+      reviewClean: reviewClean(t.reviewReport),
+      reworkCount: (t.flags && t.flags.reworkCount) || 0,
+      tasksProgress: t._tasksProgress || null,
       relatedSessions: (t.relatedSessions || []).map((r) => ({ id: r.id, title: r.title, reason: r.reason || '', cwd: r.cwd || '' })),
       sourceSessionId: t.sourceSessionId || '',
       sourceCwd: t.sourceCwd || '',
@@ -658,7 +756,12 @@ export async function apply(ctx) {
   // ---------- HTTP API（客户端通过 fetch 调用） ----------
   const handlers = {
     'tasks-list': async () => {
-      return { ok: true, tasks: state.tasks.map(toSummary), counts: countsOf(), labels: STATUS_LABEL, colors: STATUS_COLOR, order: STATUS_ORDER, persistenceOk: persistenceOk }
+      const tasks = await Promise.all(state.tasks.map(async (t) => {
+        const s = toSummary(t)
+        s.tasksProgress = await tasksProgressOf(t)
+        return s
+      }))
+      return { ok: true, tasks: tasks, counts: countsOf(), labels: STATUS_LABEL, colors: STATUS_COLOR, order: STATUS_ORDER, persistenceOk: persistenceOk }
     },
     'tasks-scan': async (a) => {
       const exclude = Array.isArray(a.excludeIds) ? a.excludeIds : []
@@ -689,6 +792,7 @@ export async function apply(ctx) {
         relatedSessions: [],
         steps: [],
         changedFiles: [],
+        screenshots: [],
         history: [],
         flags: {},
         autoRun: a.autoRun !== false,
@@ -768,6 +872,11 @@ export async function apply(ctx) {
         if (action === 'reopen') {
           if (task.status !== STATUS.REVIEW && task.status !== STATUS.DONE) return { ok: false, error: '仅「复核中 / 已完成」任务可打回' }
           if (a.note) note(task, '老板打回：' + String(a.note).slice(0, 500))
+          // 把上一轮复核问题清单作为开发反馈带下去，要求逐条修复
+          if (task.reviewReport && Array.isArray(task.reviewReport.issues) && task.reviewReport.issues.length > 0) {
+            task.flags.reworkFeedback = task.reviewReport.issues.slice()
+            note(task, '老板打回（附 ' + task.reviewReport.issues.length + ' 项复核问题，开发需逐条修复）')
+          }
           move(task, STATUS.DEVELOP, '老板打回开发')
           await saveState()
           kick(function () { return runDevelop(task) })
@@ -845,6 +954,9 @@ export async function apply(ctx) {
             task.summary = ''
             task.reviewReport = null
             task.changedFiles = []
+            task.screenshots = []
+            delete task.flags.reworkFeedback
+            delete task.flags.reworkCount
             note(task, '老板重新编辑：' + changed.join('、') + ' —— 旧计划与产物已清空，后续按新方向重新生成')
           }
           await saveState()
@@ -877,6 +989,42 @@ export async function apply(ctx) {
       } catch (err) {
         res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' })
         res.end(JSON.stringify({ ok: false, error: err && err.message || String(err) }))
+      }
+    },
+  })
+
+  // 静态文件下发：仅限面板 screenshots/<taskId>/ 目录（防目录穿越）
+  const FILES_DIR = pathJoin(PROJECT_DIR, 'screenshots')
+  const FILE_ID_RE = /^[A-Za-z0-9_\-]+$/ // 任务 id 形态（t_xxx_yyy）
+  const FILE_NAME_RE = /^[A-Za-z0-9_.\-]+$/
+  const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' }
+  ctx.webServer.register({
+    kind: 'prefix',
+    path: '/dsh-task-panel/files',
+    handler: async (req, res) => {
+      try {
+        const urlPath = (req.url || '').split('?')[0].replace('/dsh-task-panel/files', '').replace(/^\/+|\/+$/g, '')
+        const parts = urlPath.split('/').filter(Boolean)
+        const taskId = parts[0] || ''
+        const name = parts.slice(1).join('/')
+        if (!FILE_ID_RE.test(taskId) || !FILE_NAME_RE.test(name) || !name) {
+          res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' })
+          res.end('bad request')
+          return
+        }
+        const full = pathJoin(FILES_DIR, taskId, name)
+        if (!full.startsWith(pathJoin(FILES_DIR, taskId) + pathSep)) {
+          res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' })
+          res.end('forbidden')
+          return
+        }
+        const buf = await readFile(full)
+        const ext = (String(name).match(/\.[a-zA-Z0-9]+$/) || [''])[0].toLowerCase()
+        res.writeHead(200, { 'content-type': MIME[ext] || 'application/octet-stream', 'cache-control': 'no-cache' })
+        res.end(buf)
+      } catch (err) {
+        res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' })
+        res.end('not found')
       }
     },
   })

@@ -1,6 +1,9 @@
 # 运行时数据：任务面板的任务库（插件首次启动会自动创建）
 tasks.json
 
+# 运行时数据：面板收集的任务验收截图（按 <taskId>/ 存放，由 /files 路由下发）
+/screenshots/
+
 # 通用
 *.log
 .DS_Store

@@ -101,6 +101,45 @@ window.__ModuleLoader__.load({
       ".tp-dialog-actions{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid rgba(127,127,127,.2)}",
       ".tp-spin{animation:tp-spin 1s linear infinite}",
       "@keyframes tp-spin{to{transform:rotate(360deg)}}",
+      // —— 验收结论 / 截图 / 进度 ——
+      ".tp-badge{font-size:10px;font-weight:700;border-radius:8px;padding:1px 7px;white-space:nowrap;flex-shrink:0}",
+      ".tp-badge-ok{background:rgba(34,197,94,.15);color:#16a34a}",
+      ".tp-badge-bad{background:rgba(239,68,68,.15);color:#dc2626}",
+      ".tp-badge-run{background:rgba(59,130,246,.15);color:#2563eb}",
+      ".tp-badge-done{background:rgba(34,197,94,.15);color:#16a34a}",
+      ".tp-verdict{border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:12px}",
+      ".tp-verdict-ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.4)}",
+      ".tp-verdict-bad{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.45)}",
+      ".tp-verdict-run{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.35)}",
+      ".tp-verdict-line{display:flex;align-items:center;gap:6px;font-weight:700}",
+      ".tp-verdict-ok .tp-verdict-line{color:#16a34a}",
+      ".tp-verdict-bad .tp-verdict-line{color:#dc2626}",
+      ".tp-verdict-run .tp-verdict-line{color:#2563eb}",
+      ".tp-verdict-desc{color:var(--tp-dim,#64748b);white-space:pre-wrap;word-break:break-word}",
+      ".tp-issue{display:flex;gap:6px;align-items:flex-start;font-size:12px;padding:4px 0;border-bottom:1px dashed rgba(127,127,127,.18)}",
+      ".tp-issue:last-child{border-bottom:none}",
+      ".tp-issue-tag{font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;flex-shrink:0;margin-top:1px}",
+      ".tp-issue-tag-blocker{background:rgba(239,68,68,.18);color:#dc2626}",
+      ".tp-issue-tag-high{background:rgba(249,115,22,.18);color:#ea580c}",
+      ".tp-issue-tag-medium{background:rgba(245,158,11,.18);color:#d97706}",
+      ".tp-issue-tag-low{background:rgba(127,127,127,.15);color:var(--tp-dim,#64748b)}",
+      ".tp-issue-text{flex:1;white-space:pre-wrap;word-break:break-word}",
+      ".tp-progress{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--tp-dim,#64748b)}",
+      ".tp-progress-bar{flex:1;height:6px;border-radius:3px;background:rgba(127,127,127,.18);overflow:hidden}",
+      ".tp-progress-fill{height:100%;border-radius:3px;background:#22c55e;transition:width .3s ease}",
+      ".tp-progress-fill.tp-progress-part{background:#f59e0b}",
+      ".tp-shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}",
+      ".tp-shot{border:1px solid rgba(127,127,127,.3);border-radius:8px;overflow:hidden;cursor:zoom-in;background:rgba(127,127,127,.05)}",
+      ".tp-shot img{width:100%;height:110px;object-fit:cover;display:block}",
+      ".tp-shot-cap{font-size:10px;color:var(--tp-dim,#64748b);padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+      // —— 验收截图弹窗预览（当前页内，不开新 tab）——
+      ".tp-shot-mask{position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:20px}",
+      ".tp-shot-modal{background:var(--tp-bg,#ffffff);color:var(--tp-fg,#1e293b);border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);width:min(1000px,92vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}",
+      ".tp-shot-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid rgba(127,127,127,.2)}",
+      ".tp-shot-title{font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px}",
+      ".tp-shot-body{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:rgba(127,127,127,.06);padding:12px}",
+      ".tp-shot-body img{max-width:100%;max-height:100%;object-fit:contain;display:block;border-radius:6px}",
+      ".tp-shot-desc{font-size:11px;color:var(--tp-dim,#64748b);padding:8px 16px;border-top:1px solid rgba(127,127,127,.2);white-space:pre-wrap;word-break:break-word}",
       ".tp-btn:focus-visible,.tp-icon-btn:focus-visible,.tp-tab:focus-visible,.tp-side-btn:focus-visible,.tp-pub-btn:focus-visible{outline:2px solid var(--tp-accent,#3b82f6);outline-offset:1px}",
       "@media (prefers-color-scheme: dark){.tp-wrap{--tp-bg:#111827;--tp-fg:#e2e8f0;--tp-dim:#94a3b8;--tp-accent:#60a5fa}.tp-backdrop{background:rgba(0,0,0,.5)}}",
       "@media (prefers-color-scheme: light){.tp-wrap{--tp-bg:#ffffff;--tp-fg:#1e293b;--tp-dim:#64748b;--tp-accent:#3b82f6}}"
@@ -148,7 +187,8 @@ window.__ModuleLoader__.load({
       "folder": [["path", { d: "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" }]],
       "clock": [["circle", { cx: 12, cy: 12, r: 10 }], ["polyline", { points: "12 6 12 12 16 14" }]],
       "link": [["path", { d: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" }], ["path", { d: "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" }]],
-      "message-square": [["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }]]
+      "message-square": [["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }]],
+      "image": [["rect", { x: 3, y: 3, width: 18, height: 18, rx: 2, ry: 2 }], ["circle", { cx: 8.5, cy: 8.5, r: 1.5 }], ["polyline", { points: "21 15 16 10 5 21" }]]
     };
 
     /** 渲染一个内联 SVG 图标：<Icon name="rocket" size={16} className="..."/> */
@@ -203,7 +243,7 @@ window.__ModuleLoader__.load({
       tab: "todo",
       width: savedWidth,
       persistenceOk: true,
-      modal: null // null | {kind:'publish'} | {kind:'edit', taskId}
+      modal: null // null | {kind:'publish'} | {kind:'edit', taskId} | {kind:'shot', url, caption, name, desc}
     };
     var listeners = [];
     function setStore(patch) {
@@ -501,7 +541,108 @@ window.__ModuleLoader__.load({
       ]);
     }
 
+    // ---------- 组件：验收截图预览弹窗 ----------
+    function ShotDialog(props) {
+      var url = props.url;
+      var caption = props.caption || props.name || "验收截图";
+      return React.createElement("div", { className: "tp-shot-mask", onClick: props.onClose }, [
+        React.createElement("div", { className: "tp-shot-modal", onClick: function (e) { e.stopPropagation(); } }, [
+          React.createElement("div", { className: "tp-shot-head" }, [
+            React.createElement("span", { className: "tp-shot-title" }, [
+              React.createElement(Icon, { name: "image", size: 15 }),
+              React.createElement("span", null, caption)
+            ]),
+            React.createElement("button", { className: "tp-icon-btn", title: "关闭", onClick: props.onClose }, React.createElement(Icon, { name: "x", size: 16 }))
+          ]),
+          React.createElement("div", { className: "tp-shot-body" }, [
+            React.createElement("img", { src: url, alt: caption, onError: function (e) { e.currentTarget.parentNode.style.display = "none"; } })
+          ]),
+          props.desc ? React.createElement("div", { className: "tp-shot-desc" }, props.desc) : null
+        ])
+      ]);
+    }
+
     // ---------- 组件：任务卡片 ----------
+    // ---------- 验收结论辅助 ----------
+    function severityOf(issue) {
+      if (/生产阻断|阻断级|致命|严重|无法使用|不可用|安全漏洞|越权/.test(issue)) return "blocker";
+      if (/高风险|危险|权限|注入|安全/.test(issue)) return "high";
+      if (/中风险|遗留|偏差|未实测|局限|风险|建议/.test(issue)) return "medium";
+      return "low";
+    }
+    function severityLabel(s) { return s === "blocker" ? "阻断" : s === "high" ? "高" : s === "medium" ? "中" : "低"; }
+    function issueTag(issue) {
+      var m = issue.match(/【([^】]{1,12})】/);
+      if (m) return m[1];
+      return severityLabel(severityOf(issue));
+    }
+    // 任务卡上的状态徽标：让老板不展开也能看到「可验收 / 有问题」
+    function cardBadge(task) {
+      if (task.status === "review") {
+        if (task.reviewClean) return { cls: "tp-badge-ok", text: "可验收" };
+        return { cls: "tp-badge-bad", text: "有问题" };
+      }
+      if (task.status === "done") return { cls: "tp-badge-done", text: "已完成" };
+      if (task.status === "develop" && task.running) return { cls: "tp-badge-run", text: "执行中" };
+      return null;
+    }
+    // 展开后的验收结论横幅：直观告诉老板「到底有没有完成」
+    function VerdictBanner(props) {
+      var task = props.task;
+      if (task.status === "review") {
+        if (task.reviewClean) {
+          return React.createElement("div", { className: "tp-verdict tp-verdict-ok" }, [
+            React.createElement("div", { className: "tp-verdict-line" }, [
+              React.createElement(Icon, { name: "check-circle", size: 15 }),
+              React.createElement("span", null, "复核通过 · 无遗留问题 · 可验收")
+            ]),
+            task.reviewReport && task.reviewReport.verdict
+              ? React.createElement("div", { className: "tp-verdict-desc" }, "证据：" + task.reviewReport.verdict)
+              : null
+          ]);
+        }
+        var reworkInfo = task.reworkCount > 0
+          ? (task.reworkCount >= 3 ? "（已自动打回 " + task.reworkCount + " 轮仍存在问题，请老板决定）" : "（已自动打回开发第 " + task.reworkCount + " 轮）")
+          : "";
+        return React.createElement("div", { className: "tp-verdict tp-verdict-bad" }, [
+          React.createElement("div", { className: "tp-verdict-line" }, [
+            React.createElement(Icon, { name: "x-circle", size: 15 }),
+            React.createElement("span", null, "复核未通过 · " + ((task.reviewReport && task.reviewReport.issues || []).length) + " 个未解决问题 · 不可验收" + reworkInfo)
+          ]),
+          React.createElement("div", { className: "tp-verdict-desc" }, "存在未解决问题，必须全部修复并重新复核通过后才能验收。")
+        ]);
+      }
+      if (task.status === "done") {
+        return React.createElement("div", { className: "tp-verdict tp-verdict-ok" }, [
+          React.createElement("div", { className: "tp-verdict-line" }, [
+            React.createElement(Icon, { name: "check-circle", size: 15 }),
+            React.createElement("span", null, "已验收通过 · 任务完成")
+          ])
+        ]);
+      }
+      if (task.status === "develop") {
+        return React.createElement("div", { className: "tp-verdict tp-verdict-run" }, [
+          React.createElement("div", { className: "tp-verdict-line" }, [
+            React.createElement(Icon, { name: "loader", size: 15, className: "tp-spin" }),
+            React.createElement("span", null, "开发中 · 尚未完成，未到验收阶段")
+          ])
+        ]);
+      }
+      return null;
+    }
+    function ProgressBar(props) {
+      var p = props.progress;
+      if (!p || !p.total) return null;
+      var pct = Math.round((p.checked / p.total) * 100);
+      var done = p.checked >= p.total;
+      return React.createElement("div", { className: "tp-progress" }, [
+        React.createElement("span", null, "任务清单 " + p.checked + "/" + p.total + (done ? "（全部完成）" : "（未完成）")),
+        React.createElement("div", { className: "tp-progress-bar" }, [
+          React.createElement("div", { className: "tp-progress-fill" + (done ? "" : " tp-progress-part"), style: { width: pct + "%" } })
+        ])
+      ]);
+    }
+
     function TaskCard(props) {
       var st = useStore();
       var task = props.task;
@@ -585,6 +726,10 @@ window.__ModuleLoader__.load({
           React.createElement("span", { className: "tp-dot", style: { background: task.color || "#94a3b8" } }),
           React.createElement("span", { className: "tp-card-title" }, task.title),
           React.createElement("span", { className: "tp-card-status" }, task.statusLabel),
+          (function () {
+            var badge = cardBadge(task);
+            return badge ? React.createElement("span", { className: "tp-badge " + badge.cls }, badge.text) : null;
+          })(),
           React.createElement("span", { className: "tp-chev" + (expanded ? " tp-chev-open" : "") }, React.createElement(Icon, { name: "chevron-down", size: 16 }))
         ]),
         React.createElement("div", { className: "tp-card-meta" }, [
@@ -625,6 +770,8 @@ window.__ModuleLoader__.load({
           ]) : null
         ]),
         expanded ? React.createElement("div", { className: "tp-card-body" }, [
+          React.createElement(VerdictBanner, { key: "verdict", task: task }),
+          React.createElement(ProgressBar, { key: "progress", progress: task.tasksProgress }),
           task.description ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "需求")), task.description]) : null,
           task.acceptance ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "验收标准")), task.acceptance]) : null,
           task.plan ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "实施计划")), task.plan]) : null,
@@ -655,11 +802,30 @@ window.__ModuleLoader__.load({
               task.reviewReport.passed
                 ? React.createElement(Icon, { name: "check-circle", size: 14, className: "tp-ok" })
                 : React.createElement(Icon, { name: "x-circle", size: 14, className: "tp-bad" }),
-              React.createElement("span", null, " " + (task.reviewReport.passed ? "通过" : "未通过") + (task.reviewReport.verdict ? "（" + task.reviewReport.verdict + "）" : "")),
-              (task.reviewReport.issues || []).length > 0
-                ? React.createElement("span", null, "；问题：" + task.reviewReport.issues.join("；"))
-                : null
-            ])
+              React.createElement("span", null, " " + (task.reviewReport.passed ? "通过" : "未通过") + (task.reviewReport.verdict ? "（" + task.reviewReport.verdict + "）" : ""))
+            ]),
+            (task.reviewReport.issues || []).length > 0 ? React.createElement("div", { className: "tp-kv", style: { marginTop: 4 } }, [
+              React.createElement("b", null, "遗留问题（" + task.reviewReport.issues.length + " 项，全部修复后才可验收）"),
+              task.reviewReport.issues.map(function (iss, i) {
+                var sev = severityOf(iss);
+                return React.createElement("div", { key: i, className: "tp-issue" }, [
+                  React.createElement("span", { className: "tp-issue-tag tp-issue-tag-" + sev }, issueTag(iss)),
+                  React.createElement("span", { className: "tp-issue-text" }, iss)
+                ]);
+              })
+            ]) : null
+          ]) : null,
+          (task.screenshots || []).length > 0 ? React.createElement("div", { className: "tp-sec" }, [
+            React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "验收截图（" + task.screenshots.length + " 张，点击放大）")),
+            React.createElement("div", { className: "tp-shots" }, task.screenshots.map(function (s, i) {
+              return React.createElement("div", { key: i, className: "tp-shot", title: s.caption || s.name, onClick: function (e) {
+                e.stopPropagation();
+                if (s.url) openModal({ kind: "shot", url: s.url, caption: s.caption, name: s.name });
+              } }, [
+                React.createElement("img", { src: s.url, alt: s.caption || s.name, loading: "lazy", onError: function (e) { e.currentTarget.style.display = "none"; } }),
+                React.createElement("div", { className: "tp-shot-cap" }, s.caption || s.name)
+              ]);
+            }))
           ]) : null,
           (function () {
             var ss = task.stageSessions || {};
@@ -748,6 +914,8 @@ window.__ModuleLoader__.load({
         dialog = React.createElement(PublishDialog, { key: "publish", sid: sid, repos: repos, onClose: closeModal });
       } else if (st.modal && st.modal.kind === "edit") {
         dialog = React.createElement(EditDialog, { key: "edit", taskId: st.modal.taskId, onClose: closeModal });
+      } else if (st.modal && st.modal.kind === "shot") {
+        dialog = React.createElement(ShotDialog, { key: "shot", url: st.modal.url, caption: st.modal.caption, name: st.modal.name, desc: st.modal.desc, onClose: closeModal });
       }
       return React.createElement("div", { className: "tp-wrap" }, [
         React.createElement("div", { className: "tp-backdrop", onClick: closePanel }),
