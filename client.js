@@ -702,7 +702,9 @@ window.__ModuleLoader__.load({
 
       var actions = [];
       if (task.status === "todo") {
-        actions.push({ label: "领取并规划", icon: "rocket", action: "claim", primary: true });
+        // 已自动领取/正在规划的任务不再显示「领取并规划」（自动领取已接管，Host 也会拒绝重复领取）。
+        // 仅保留给尚未运行、需手动领取（如关闭自动执行）的任务。
+        if (!task.running) actions.push({ label: "领取并规划", icon: "rocket", action: "claim", primary: true });
         actions.push({ label: "暂停", icon: "pause", action: "pause" });
         actions.push({ label: "删除", icon: "trash", action: "delete" });
       } else if (task.status === "clarify") {
