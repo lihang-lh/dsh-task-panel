@@ -9,6 +9,63 @@
 import { copyFile, mkdir, readFile } from 'node:fs/promises'
 import { join as pathJoin, sep as pathSep } from 'node:path'
 
+// ---------- 原生 App（iOS/Android）截图：设备/工具未就绪指引（纯函数，可单测） ----------
+// 开发/复核代理截真机屏前发现缺工具/无设备/未配对时，host 用本函数生成「如何安装/连接」指引，
+// 存入 task.flags.deviceGuidance 供面板展示；client 只做渲染，不重复此逻辑。
+const DEVICE_GUIDE_TITLE = {
+  android: '连接 Android 设备（真机/模拟器）',
+  'ios-simulator': '准备 iOS 模拟器',
+  'ios-device': '连接并信任 iOS 真机',
+}
+const DEVICE_GUIDE_STEPS = {
+  adb: [
+    '检查是否已安装 adb：command -v adb',
+    '未安装时安装（macOS）：brew install android-platform-tools',
+    '安装后验证：adb version',
+  ],
+  'android-device': [
+    '连接并授权设备：手机开启「开发者选项 → USB 调试」，连接电脑后在手机弹窗点「允许 USB 调试」',
+    '查看设备状态（须显示 device，不能是 unauthorized / offline）：adb devices',
+    '无线调试可选：先 adb tcpip 5555，再 adb connect <手机IP>，最后 adb devices 确认',
+  ],
+  xcode: [
+    '检查 Xcode 命令行工具是否就绪：xcode-select -p',
+    '未安装时安装 Xcode（App Store 或 brew install --cask xcode），首次使用接受许可：sudo xcodebuild -license accept',
+  ],
+  simulator: [
+    '列出可用模拟器：xcrun simctl list devices available',
+    '启动一个模拟器：open -a Simulator',
+  ],
+  idb: [
+    '检查是否已安装 idb：command -v idb',
+    '安装 idb companion（macOS）：brew tap facebook/fb && brew install idb-companion',
+    '安装 idb 命令行：pipx install fb-idb（或 pip install fb-idb）',
+    '验证能看到设备：idb list-targets',
+  ],
+  'ios-pairing': [
+    '让 iPhone 信任这台电脑：连接后解锁手机，点击弹窗「信任此电脑」',
+    '确认设备已被识别：idevice_id -l（依赖 libimobiledevice：brew install libimobiledevice）',
+    '也可在 Xcode → Window → Devices and Simulators 中确认设备已配对',
+  ],
+}
+export function deviceGuidance(platform, missing) {
+  const known = DEVICE_GUIDE_TITLE[platform] ? platform : ''
+  const title = known ? DEVICE_GUIDE_TITLE[known] : '检查开发环境工具链'
+  const list = Array.isArray(missing)
+    ? missing.map((m) => String(m).trim().toLowerCase()).filter(Boolean)
+    : []
+  const steps = []
+  for (const key of new Set(list)) {
+    const lines = DEVICE_GUIDE_STEPS[key]
+    if (!lines) continue
+    for (const line of lines) if (steps.indexOf(line) === -1) steps.push(line)
+  }
+  if (steps.length === 0) {
+    steps.push('按代理报告的具体缺口，安装对应平台的命令行工具链（Android：adb；iOS：Xcode/simctl 或 idb），并把设备/模拟器连接到这台电脑')
+  }
+  return { title: title, steps: steps }
+}
+
 export const name = 'dsh-task-panel'
 export const inject = ['timer', 'webServer']
 
@@ -70,6 +127,16 @@ export async function apply(ctx) {
         summary: { type: 'string' },
         changedFiles: { type: 'array', items: { type: 'string' } },
         screenshots: { type: 'array', items: { type: 'string' } },
+        deviceStatus: {
+          type: 'object',
+          properties: {
+            platform: { type: 'string' }, // 'android' | 'ios-simulator' | 'ios-device' | 'web' | ''
+            ok: { type: 'boolean' }, // 截图环节是否就绪/成功
+            missing: { type: 'array', items: { type: 'string' } }, // 缺失项标识，见 develop prompt
+            detail: { type: 'string' }, // 人工可读的缺口说明
+          },
+          additionalProperties: true,
+        },
         blocker: { type: 'string' },
       },
       required: ['done'],
@@ -310,11 +377,28 @@ export async function apply(ctx) {
       }
       s += '\n\n你的角色：开发执行代理。'
         + '\n请严格按照计划实施本任务，完成代码/文档/配置改动并自测：能跑的命令要实际跑并记录结果（退出码/输出），改 UI 要给出可验证的证据。'
-        + '\n【端到端与截图要求】涉及 UI / 页面 / 表单 / 交互的任务，必须启动本地环境做端到端验证（真实浏览器或 Playwright），'
-        + '并把关键界面的截图保存到 <目标仓库>/specs/proposals/<任务id>/screenshots/ 目录（PNG/JPEG），'
-        + '然后在输出的 screenshots 数组中给出截图路径（绝对路径或仓库内相对路径，每张一行，附简短说明请在 summary 中写清）。'
-        + '纯后端/测试任务可跳过截图，但必须在 summary 中说明原因。'
-        + '\n以 JSON 输出：done（boolean 是否完成）、summary（完成情况摘要）、changedFiles（改动文件数组）、screenshots（截图路径数组）、blocker（未完成时的阻塞原因，否则空字符串）。'
+        + '\n【端到端与截图要求】先判定本任务形态，再按对应方式做端到端验证并截图。截图统一保存到 <目标仓库>/specs/proposals/<任务id>/screenshots/ 目录（PNG/JPEG），'
+        + '并在输出的 screenshots 数组中给出截图路径（绝对路径或仓库内相对路径，每张一行，简短说明写在 summary）：'
+        + '\n- Web / 页面 / 表单 / 交互（浏览器形态）：启动本地环境，用真实浏览器或 Playwright 打开页面验证，截取关键界面。'
+        + '\n- 原生 App（iOS / Android）形态：按下面【原生 App 截图分支】操作，必须截「真机/模拟器实际运行界面」。'
+        + '\n- 纯后端/测试任务可跳过截图，但必须在 summary 中说明原因。'
+        + '\n\n【原生 App 截图分支】先判定本任务是否为原生 app 工程，再决定截图手段——'
+        + '\n1. 判定：结合任务描述与仓库结构启发式探测，满足其一即视为原生 app 工程：'
+        + 'Android——存在 app/src/main/AndroidManifest.xml、build.gradle(.kts) / settings.gradle(.kts) / gradle.properties 且含 android 插件；'
+        + 'iOS——存在 *.xcodeproj / *.xcworkspace，或 ios/ 目录下 Package.swift 且任务指向 iOS app。'
+        + '可在目标仓库用 find 自查；仓库同时含 web 与 app（混合工程）时，以任务描述的主对象为准，并在 summary 说明判定依据。'
+        + '\n2. 截图流程（探测工具 → 构建/安装/启动 → 截屏）：'
+        + '\n   - Android（真机/模拟器通用）：先 adb devices 确认有 device（unauthorized 需在手机弹窗点「允许 USB 调试」）；'
+        + 'adb -s <serial> install -r <app> 后 adb shell am start 启动应用；再 adb -s <serial> exec-out screencap -p > <截图文件>。多设备必须用 -s <serial>；无线设备先 adb connect <ip:port>。'
+        + '\n   - iOS 模拟器：xcrun simctl list devices 找到已启动（Booted）的模拟器；xcrun simctl install booted <app> 与 simctl launch 启动；再 xcrun simctl io booted screenshot <截图文件>。'
+        + '\n   - iOS 真机：xcodebuild 安装到设备（或提示老板已在手机上手动打开应用）；用 idb screenshot <截图文件> 截图；无 idb 时可用 idevicescreenshot（libimobiledevice）。'
+        + '\n3. 【探测先行，缺则如实报告，严禁硬截】截屏前先验证工具与设备（command -v adb / xcrun / idb、adb devices、xcrun simctl list devices）。'
+        + '若缺工具 / 无设备 / 未配对，不要做无意义截图，而是：done 输出 false；'
+        + 'deviceStatus 输出 { ok:false, platform:<android|ios-simulator|ios-device>, missing:[<缺失项>], detail:<缺什么、怎么检查> }；'
+        + 'blocker 写清「截图未能完成 + 具体缺口」（面板会给出安装/连接指引，老板接好设备后点「重新执行」重试）。'
+        + '缺失项标识从以下取值：adb（未装 adb）、android-device（无设备/未授权）、xcode（无 Xcode/simctl）、simulator（无已启动模拟器）、idb（无 idb）、ios-pairing（真机未信任配对）、other。'
+        + '\n以 JSON 输出：done（boolean 是否完成）、summary（完成情况摘要）、changedFiles（改动文件数组）、screenshots（截图路径数组）、'
+        + 'deviceStatus（可选，截图受阻时的状态对象 {platform, ok, missing[], detail}）、blocker（未完成时的阻塞原因，否则空字符串）。'
       return s
     }
     if (stage === 'review') {
@@ -324,7 +408,10 @@ export async function apply(ctx) {
         + '\n\n你的角色：质量复核代理（老板验收前的最后一道关卡）。'
         + '\n请对照验收标准、任务清单与真实运行结果逐项核对，不能只凭代码阅读或代理自述下结论：'
         + '\n1. 【必须实际运行】跑测试并核对结果（pytest / node --test / playwright 等），在 verdict 中写明跑了哪些命令与结果；'
-        + '\n2. 【端到端】涉及 UI / 页面 / 表单 / 交互的任务，必须核对端到端（Playwright 或真实浏览器流程）确实执行过、截图真实存在且内容与实现一致；'
+        + '\n2. 【端到端】涉及 UI / 页面 / 表单 / 交互的任务，必须核对端到端确实执行过、截图真实存在且内容与实现一致：'
+        + 'Web 类任务核对 Playwright 或真实浏览器流程；'
+        + '原生 App（iOS/Android）任务按开发阶段的探测与截屏规则（adb / xcrun simctl / idb），亲自截取真机/模拟器实际运行界面核对——'
+        + '拿不到真实 app 截图证据时（缺工具/无设备/未配对）必须记为问题，不得放行；'
         + '\n3. 逐条核对 tasks.md 勾选状态与真实实现是否一致，勾了但未实现的必须记为问题；'
         + '\n4. 检查是否有未完成功能、生产接线缺失、安全/权限/审计缺口。'
         + '\n【通过硬门槛（必须同时满足，否则 passed=false）】'
@@ -571,6 +658,7 @@ export async function apply(ctx) {
       return
     }
     if (task.flags.running) return
+    delete task.flags.deviceGuidance // 每轮重跑前清掉旧的「待接设备」标记
     runningDevelop += 1
     task.flags.running = true
     try {
@@ -586,7 +674,23 @@ export async function apply(ctx) {
         await saveState()
         await runReview(task)
       } else {
-        note(task, '开发代理报告未完成：' + (s.blocker || '原因未说明') + '（可在面板点击「重新执行」）')
+        const ds = s.deviceStatus
+        // 原生 app 任务截图受阻（缺工具/无设备/未配对）：把分平台安装指引存入 flags，
+        // 面板据此显示「待接设备」徽标与指引横幅；老板照做后点「重新执行」重试（rerun 复用）。
+        if (ds && ds.ok === false) {
+          const missing = Array.isArray(ds.missing) ? ds.missing : []
+          const guide = deviceGuidance(ds.platform, missing)
+          task.flags.deviceGuidance = {
+            platform: typeof ds.platform === 'string' ? ds.platform : '',
+            missing: missing,
+            detail: (typeof ds.detail === 'string' && ds.detail) ? ds.detail : (s.blocker || ''),
+            title: guide.title,
+            steps: guide.steps,
+            at: now(),
+          }
+        }
+        note(task, '开发代理报告未完成：' + (s.blocker || '原因未说明')
+          + ((ds && ds.ok === false) ? '（截图受阻：需连接设备/补齐工具后点「重新执行」，面板已显示安装指引）' : '（可在面板点击「重新执行」）'))
         await saveState()
       }
     } finally {
@@ -703,6 +807,7 @@ export async function apply(ctx) {
       reviewReport: t.reviewReport || null,
       reviewClean: reviewClean(t.reviewReport),
       reworkCount: (t.flags && t.flags.reworkCount) || 0,
+      deviceGuidance: (t.flags && t.flags.deviceGuidance) || null,
       tasksProgress: t._tasksProgress || null,
       relatedSessions: (t.relatedSessions || []).map((r) => ({ id: r.id, title: r.title, reason: r.reason || '', cwd: r.cwd || '' })),
       sourceSessionId: t.sourceSessionId || '',

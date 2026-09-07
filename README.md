@@ -69,7 +69,8 @@
 - **领取/规划 (claim)**：要求子代理先读关联历史会话，以 OpenSpec 风格输出**完整可执行**的实施计划 `{plan, steps, risks, questions}`（steps 编号列出：做什么 / 涉及文件 / 如何验收），明确「不要开始实施」。
 - **澄清定稿 (refine)**：老板回答澄清问题后触发的规划轮，结合回答输出最终计划（不再提问）。
 - **开发 (develop)**：要求按已确认计划实施并**自测（给出可验证证据）**，按 `tasks.md` 逐项勾选；涉及 UI/页面/表单的任务必须做端到端验证并把关键界面**截图**保存到 `<目标仓库>/specs/proposals/<任务id>/screenshots/`，输出 `{done, summary, changedFiles, screenshots, blocker}`。
-- **复核 (review)**：要求对照验收标准**和 tasks.md 逐项核对**实现、实际运行测试与端到端，输出 `{passed, issues, verdict, screenshots}`；**有遗留问题即 passed=false**（issues 为空才可通过），复核截图一并挂到任务。
+  - **原生 App（iOS/Android）支持**：代理先探测仓库判断任务形态——Web 用浏览器/Playwright 截图；原生 App 按平台用 `adb exec-out screencap`（Android 真机/模拟器）、`xcrun simctl io`（iOS 模拟器）或 `idb screenshot` / `idevicescreenshot`（iOS 真机）截**真机/模拟器实际运行界面**。截屏前先探测工具与设备：缺工具/无设备/未配对时如实报告（`done=false` + `deviceStatus`），任务停留在「开发中」，面板卡片显示「待接设备」徽标与**按平台的安装/连接指引**，老板接好设备后点「重新执行」即可重试；成功出图后走与 Web 截图完全相同的验收截图管道。
+- **复核 (review)**：要求对照验收标准**和 tasks.md 逐项核对**实现、实际运行测试与端到端，输出 `{passed, issues, verdict, screenshots}`；**有遗留问题即 passed=false**（issues 为空才可通过），复核截图一并挂到任务。原生 App 任务由复核代理亲自截真机/模拟器运行界面核对，拿不到真实截图证据必须记为问题。
 
 各阶段都通过 **outputSchema**（JSON Schema）约束子代理的输出，结果结构化、可被读取器机械解析 —— 不靠猜文本。
 
@@ -216,3 +217,14 @@ shell.overlay 抽屉面板  ◀── JSON 返回 ───   tasks-list / tasks
 1. 确认 `~/.dsh/profiles/web/package.json` 的 `dependencies` 含 `"dsh-task-panel": "link:<你的 dsh-task-panel 目录>"`，且 `dsh.profile.bundles` 末尾含 `"dsh-task-panel"`；
 2. 在 `~/.dsh/profiles/web` 执行 `pnpm install`；
 3. 重启 `dsh web` 后刷新页面（侧边栏底部、设置上方应出现带角标的按钮）。
+
+### Q3：任务卡片出现橙色「待接设备」徽标 / 「需要连接设备后才能继续」提示，怎么办？
+
+**含义**：这是**原生 App（iOS/Android）任务**的开发代理想截真机/模拟器运行界面作为验收证据，但当前机器缺工具 / 没连设备 / iOS 真机未配对，任务因此停留在「开发中」。
+
+**处理**：
+
+1. 展开该任务卡片，按「连接设备指引」逐条操作（指引按平台给出，例如：Android 装 `adb`（`brew install android-platform-tools`）并 `adb devices` 确认授权；iOS 模拟器确认 Xcode/`simctl` 并 `open -a Simulator`；iOS 真机安装 `idb`（`brew install idb-companion` + `pipx install fb-idb`）并让手机点「信任此电脑」）；
+2. 手机/模拟器接好后，点卡片上的「**重新执行**」按钮 —— 开发代理会重跑并自动截真机屏，成功后截图进入「验收截图」区，徽标消失。
+
+> 前置条件：dsh web 跑在**开发者本机**、手机（USB 或无线）直连这台机器；代理只能截到本机能连到的设备。

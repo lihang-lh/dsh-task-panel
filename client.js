@@ -107,6 +107,13 @@ window.__ModuleLoader__.load({
       ".tp-badge-bad{background:rgba(239,68,68,.15);color:#dc2626}",
       ".tp-badge-run{background:rgba(59,130,246,.15);color:#2563eb}",
       ".tp-badge-done{background:rgba(34,197,94,.15);color:#16a34a}",
+      ".tp-badge-device{background:rgba(249,115,22,.15);color:#ea580c}",
+      ".tp-device-guide{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.4);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:12px}",
+      ".tp-device-guide .tp-kv-line{font-weight:700;color:#ea580c}",
+      ".tp-device-detail{color:var(--tp-dim,#64748b);white-space:pre-wrap;word-break:break-word}",
+      ".tp-device-steps-title{font-weight:600;color:var(--tp-dim,#64748b)}",
+      ".tp-device-step{white-space:pre-wrap;word-break:break-word}",
+      ".tp-device-hint{font-size:11px;color:var(--tp-dim,#64748b);white-space:pre-wrap}",
       ".tp-verdict{border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:12px}",
       ".tp-verdict-ok{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.4)}",
       ".tp-verdict-bad{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.45)}",
@@ -594,6 +601,7 @@ window.__ModuleLoader__.load({
       }
       if (task.status === "done") return { cls: "tp-badge-done", text: "已完成" };
       if (task.status === "develop" && task.running) return { cls: "tp-badge-run", text: "执行中" };
+      if (task.status === "develop" && !task.running && task.deviceGuidance) return { cls: "tp-badge-device", text: "待接设备" };
       return null;
     }
     // 展开后的验收结论横幅：直观告诉老板「到底有没有完成」
@@ -808,6 +816,18 @@ window.__ModuleLoader__.load({
             task.specPath + (task.specInRepo ? "" : "（目标仓库不可写，回退于面板目录）")
           ]) : null,
           task.summary ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "实现摘要")), task.summary]) : null,
+          task.status === "develop" && task.deviceGuidance ? React.createElement("div", { className: "tp-device-guide" }, [
+            React.createElement("div", { className: "tp-kv-line" }, [
+              React.createElement(Icon, { name: "alert-triangle", size: 14, className: "tp-warn" }),
+              React.createElement("span", null, "需要连接设备后才能继续：真机/模拟器截图未完成")
+            ]),
+            task.deviceGuidance.detail ? React.createElement("div", { className: "tp-device-detail" }, "代理报告：" + task.deviceGuidance.detail) : null,
+            React.createElement("div", { className: "tp-device-steps-title" }, task.deviceGuidance.title + "："),
+            (task.deviceGuidance.steps || []).map(function (step, i) {
+              return React.createElement("div", { key: i, className: "tp-device-step" }, (i + 1) + ". " + step);
+            }),
+            React.createElement("div", { className: "tp-device-hint" }, "接好设备 / 补齐工具后，点卡片上的「重新执行」按钮重试截图。")
+          ]) : null,
           task.reviewReport ? React.createElement("div", { className: "tp-sec" }, [
             React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "复核报告")),
             React.createElement("div", { className: "tp-kv-line" }, [
