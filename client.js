@@ -108,6 +108,22 @@ window.__ModuleLoader__.load({
       ".tp-badge-run{background:rgba(59,130,246,.15);color:#2563eb}",
       ".tp-badge-done{background:rgba(34,197,94,.15);color:#16a34a}",
       ".tp-badge-device{background:rgba(249,115,22,.15);color:#ea580c}",
+      ".tp-badge-clarify{background:rgba(59,130,246,.15);color:#2563eb}",
+      // —— 待澄清问题卡片（老板反馈：原 12px 纯文本行看不清，改卡片化 + 醒目）——
+      ".tp-clarify{display:flex;flex-direction:column;gap:10px}",
+      ".tp-clarify-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}",
+      ".tp-clarify-title{font-size:13px;color:var(--tp-dim,#64748b)}",
+      ".tp-clarify-title b{font-weight:600}",
+      ".tp-clarify-progress{font-size:11px;font-weight:600;color:var(--tp-dim,#64748b);white-space:nowrap;flex-shrink:0}",
+      ".tp-clarify-progress-ok{color:#15803d}",
+      ".tp-q{background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.32);border-left:3px solid var(--tp-accent,#3b82f6);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}",
+      ".tp-q-head{display:flex;align-items:flex-start;gap:8px}",
+      ".tp-q-no{flex:0 0 auto;font-size:12px;font-weight:700;line-height:20px;padding:0 7px;border-radius:6px;background:var(--tp-accent,#3b82f6);color:#fff}",
+      ".tp-q-text{font-size:15px;font-weight:700;line-height:22px;flex:1;min-width:0;white-space:pre-wrap;word-break:break-word}",
+      ".tp-q-why{font-size:12px;color:var(--tp-dim,#64748b);white-space:pre-wrap;word-break:break-word;padding-left:35px}",
+      ".tp-q-done{border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.06);border-left-color:#22c55e}",
+      ".tp-q-done .tp-q-no{background:#22c55e}",
+      ".tp-q .tp-textarea{font-size:14px}",
       ".tp-device-guide{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.4);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:12px}",
       ".tp-device-guide .tp-kv-line{font-weight:700;color:#ea580c}",
       ".tp-device-detail{color:var(--tp-dim,#64748b);white-space:pre-wrap;word-break:break-word}",
@@ -148,7 +164,9 @@ window.__ModuleLoader__.load({
       ".tp-shot-body img{max-width:100%;max-height:100%;object-fit:contain;display:block;border-radius:6px}",
       ".tp-shot-desc{font-size:11px;color:var(--tp-dim,#64748b);padding:8px 16px;border-top:1px solid rgba(127,127,127,.2);white-space:pre-wrap;word-break:break-word}",
       ".tp-btn:focus-visible,.tp-icon-btn:focus-visible,.tp-tab:focus-visible,.tp-side-btn:focus-visible,.tp-pub-btn:focus-visible{outline:2px solid var(--tp-accent,#3b82f6);outline-offset:1px}",
-      "@media (prefers-color-scheme: dark){.tp-wrap{--tp-bg:#111827;--tp-fg:#e2e8f0;--tp-dim:#94a3b8;--tp-accent:#60a5fa}.tp-backdrop{background:rgba(0,0,0,.5)}}",
+      // 澄清进度「已答 x/y」全答完的绿色：亮色需更深才达 WCAG AA（#15803d 对白底 5.02），
+      // 暗色下同一绿色对比度反而不足（3.54），故在暗色分支单独提亮回 #16a34a（5.38）。
+      "@media (prefers-color-scheme: dark){.tp-wrap{--tp-bg:#111827;--tp-fg:#e2e8f0;--tp-dim:#94a3b8;--tp-accent:#60a5fa}.tp-clarify-progress-ok{color:#16a34a}.tp-backdrop{background:rgba(0,0,0,.5)}}",
       "@media (prefers-color-scheme: light){.tp-wrap{--tp-bg:#ffffff;--tp-fg:#1e293b;--tp-dim:#64748b;--tp-accent:#3b82f6}}"
     ].join("\n");
 
@@ -593,6 +611,21 @@ window.__ModuleLoader__.load({
       if (m) return m[1];
       return severityLabel(severityOf(issue));
     }
+    // 澄清进度：按提交口径（trim 后非空）统计已答问数，供进度提示与已答卡片高亮共用。
+    // 答案优先级与 submitAnswers() 一致：草稿 answers[qid] 优先于已有答案 q.answer。
+    function clarifyProgress(questions, answers) {
+      var list = questions || [];
+      var drafts = answers || {};
+      var answeredIds = {};
+      var answered = 0;
+      for (var i = 0; i < list.length; i++) {
+        var q = list[i] || {};
+        var raw = drafts[q.id] !== undefined ? drafts[q.id] : (q.answer || "");
+        var text = typeof raw === "string" ? raw.trim() : "";
+        if (text) { answered++; answeredIds[q.id] = true; }
+      }
+      return { answered: answered, total: list.length, answeredIds: answeredIds };
+    }
     // 任务卡上的状态徽标：让老板不展开也能看到「可验收 / 有问题」
     function cardBadge(task) {
       if (task.status === "review") {
@@ -602,6 +635,10 @@ window.__ModuleLoader__.load({
       if (task.status === "done") return { cls: "tp-badge-done", text: "已完成" };
       if (task.status === "develop" && task.running) return { cls: "tp-badge-run", text: "执行中" };
       if (task.status === "develop" && !task.running && task.deviceGuidance) return { cls: "tp-badge-device", text: "待接设备" };
+      if (task.status === "clarify") {
+        var pending = (task.questions || []).length;
+        return { cls: "tp-badge-clarify", text: pending > 0 ? "待澄清 " + pending + " 问" : "待澄清" };
+      }
       return null;
     }
     // 展开后的验收结论横幅：直观告诉老板「到底有没有完成」
@@ -796,15 +833,30 @@ window.__ModuleLoader__.load({
           task.acceptance ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "验收标准")), task.acceptance]) : null,
           task.plan ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "实施计划")), task.plan]) : null,
           task.planDraft ? React.createElement("div", { className: "tp-sec" }, [React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "计划草稿（待澄清定稿）")), task.planDraft]) : null,
-          (task.questions || []).length > 0 && task.status === "clarify" ? React.createElement("div", { className: "tp-sec", onClick: function (e) { e.stopPropagation(); } }, [
-            React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "待澄清问题（至少回答一个，其余按未回答处理）")),
-            task.questions.map(function (q) {
-              return React.createElement("div", { key: q.id, style: { marginBottom: 8 } }, [
-                React.createElement("div", { className: "tp-kv" }, "Q" + q.id.slice(1) + ". " + q.q + (q.why ? "（" + q.why + "）" : "")),
-                React.createElement("textarea", { className: "tp-textarea", rows: 2, placeholder: "你的回答…", value: answers[q.id] !== undefined ? answers[q.id] : (q.answer || ""), onChange: function (e) { setAnswer(q.id, e.target.value); } })
-              ]);
-            })
-          ]) : null,
+          (task.questions || []).length > 0 && task.status === "clarify" ? (function () {
+            // 每问一张强调色卡片：问题正文 15px 加粗，why 退为次级说明，
+            // 作答框独立成行；已答卡片转绿 + 标题行显示「已答 x/y」。
+            var qp = clarifyProgress(task.questions, answers);
+            return React.createElement("div", { className: "tp-clarify", onClick: function (e) { e.stopPropagation(); } }, [
+              React.createElement("div", { className: "tp-clarify-head" }, [
+                React.createElement("span", { className: "tp-clarify-title" }, React.createElement("b", null, "待澄清问题（至少回答一个，其余按未回答处理）")),
+                React.createElement("span", {
+                  className: "tp-clarify-progress" + (qp.total > 0 && qp.answered >= qp.total ? " tp-clarify-progress-ok" : "")
+                }, "已答 " + qp.answered + "/" + qp.total)
+              ]),
+              task.questions.map(function (q, i) {
+                var done = qp.answeredIds[q.id] === true;
+                return React.createElement("div", { key: q.id, className: "tp-q" + (done ? " tp-q-done" : "") }, [
+                  React.createElement("div", { className: "tp-q-head" }, [
+                    React.createElement("span", { className: "tp-q-no" }, "Q" + (i + 1)),
+                    React.createElement("span", { className: "tp-q-text" }, q.q)
+                  ]),
+                  q.why ? React.createElement("div", { className: "tp-q-why" }, q.why) : null,
+                  React.createElement("textarea", { className: "tp-textarea", rows: 2, placeholder: "你的回答…", value: answers[q.id] !== undefined ? answers[q.id] : (q.answer || ""), onChange: function (e) { setAnswer(q.id, e.target.value); } })
+                ]);
+              })
+            ]);
+          })() : null,
           (task.questions || []).length > 0 && task.status !== "clarify" ? React.createElement("div", { className: "tp-sec" }, [
             React.createElement("div", { className: "tp-kv" }, React.createElement("b", null, "澄清问答")),
             task.questions.map(function (q) {
