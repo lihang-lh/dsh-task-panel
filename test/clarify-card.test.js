@@ -1,5 +1,5 @@
 // 澄清卡片化单测 —— 对照 docs/superpowers/specs/2026-09-17-澄清卡片化-design.md §7.1（T1–T12）
-// 运行：node --test test/
+// 运行：npm test（= node --test "test/*.test.js"；Node 26 下 `node --test test/` 会报 Cannot find module）
 //
 // client.js 是 DSH client-modules bundle（window.__ModuleLoader__.load），不能直接 import，
 // 因此这里做两件事：

@@ -187,7 +187,7 @@ shell.overlay 抽屉面板  ◀── JSON 返回 ───   tasks-list / tasks
 
 - 改 Host（`index.js`）或前端（`client.js`）后重启 `dsh web` 生效；`tasks.json` 是运行时数据（gitignored，插件会自动创建）。
 - 测试：`npm test`（= `node --test "test/*.test.js"`）。除纯逻辑单测外，`test/clarify-card.render.test.js` 会用极简 DOM 跑 client.js 的真实渲染代码，并（本机有 Chrome 时）用 headless Chrome 的 `getComputedStyle` 核对字号 / 字重 / 边框 / 配色等视觉验收点；无 Chrome 自动跳过。
-- 渲染验证与截图（不重启 `dsh web`、不动真实 tasks.json）：`node devtools/render-clarify-card.mjs`（结构核对）/ `--measure`（浏览器实测计算样式）/ `--png`（输出到 `screenshots/clarify-card/`）。Chrome 路径可用 `DSH_CLARIFY_CHROME` 覆盖。
+- 渲染验证与截图（不重启 `dsh web`、不动真实 tasks.json）：`node devtools/render-clarify-card.mjs`（结构核对）/ `--measure`（浏览器实测计算样式）/ `--contrast`（亮/暗两套主题的对比度实测，含 WCAG AA 判定）/ `--png`（输出到 `screenshots/clarify-card/`，同时落一份可直接打开的 `.html` 预览）。Chrome 路径可用 `DSH_CLARIFY_CHROME` 覆盖。
 - Host 提供 HTTP API：`POST /dsh-task-panel/api/tasks-list | tasks-scan | tasks-create | tasks-action`。
 
 ---

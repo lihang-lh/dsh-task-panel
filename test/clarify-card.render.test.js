@@ -6,7 +6,7 @@
 //   2) headless Chrome：把渲染结果交给真实浏览器，用 getComputedStyle 核对字号 / 字重 /
 //      边框 / 底色 / 圆角等视觉验收点（本机无 Chrome 时自动跳过，不阻塞 CI）。
 //
-// 运行：node --test "test/*.test.js"
+// 运行：npm test（= node --test "test/*.test.js"；Node 26 下 `node --test test/` 会报 Cannot find module）
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
